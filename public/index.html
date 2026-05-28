@@ -1,190 +1,611 @@
-const express = require('express');
-const fetch = require('node-fetch');
-const cors = require('cors');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Posting Analyzer — Stephen R. Cherico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0f1e35;
+    --navy-mid: #1a2f4a;
+    --navy-light: #243d5e;
+    --gold: #c8a84b;
+    --gold-light: #e2c97e;
+    --gold-dim: #8a7035;
+    --cream: #f7f3ec;
+    --cream-dark: #ede7db;
+    --white: #ffffff;
+    --text-primary: #0f1e35;
+    --text-secondary: #4a5568;
+    --text-muted: #718096;
+    --border: rgba(15,30,53,0.12);
+    --border-gold: rgba(200,168,75,0.4);
+    --success: #1a7a4a;
+    --success-bg: #edf7f1;
+    --error: #b91c1c;
+    --error-bg: #fef2f2;
+    --shadow-sm: 0 1px 3px rgba(15,30,53,0.08);
+    --shadow-md: 0 4px 16px rgba(15,30,53,0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--text-primary);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  header {
+    background: var(--navy);
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 320px; height: 320px;
+    border: 1px solid rgba(200,168,75,0.15);
+    border-radius: 50%;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: -40px;
+    width: 240px; height: 240px;
+    border: 1px solid rgba(200,168,75,0.1);
+    border-radius: 50%;
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 40px 40px;
+    position: relative;
+    z-index: 1;
+  }
+  .header-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-eyebrow::before {
+    content: '';
+    display: block;
+    width: 28px; height: 1px;
+    background: var(--gold-dim);
+  }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 400;
+    color: var(--white);
+    line-height: 1.15;
+    margin-bottom: 14px;
+  }
+  h1 em { font-style: italic; color: var(--gold-light); }
+  .header-sub {
+    font-size: 15px;
+    color: rgba(255,255,255,0.55);
+    font-weight: 300;
+    max-width: 560px;
+    line-height: 1.65;
+  }
+  .header-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(200,168,75,0.3);
+    color: rgba(255,255,255,0.65);
+    background: rgba(200,168,75,0.08);
+  }
+  .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
+  main { max-width: 900px; margin: 0 auto; padding: 40px 40px 80px; }
+  .how-it-works {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 32px;
+    box-shadow: var(--shadow-sm);
+  }
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    margin-bottom: 16px;
+  }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+  .step { display: flex; flex-direction: column; gap: 6px; }
+  .step-num { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--cream-dark); line-height: 1; }
+  .step-title { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .step-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .form-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 32px;
+  }
+  .form-header {
+    background: var(--navy);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .form-header-title { font-size: 13px; font-weight: 500; color: var(--white); display: flex; align-items: center; gap: 8px; }
+  .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .form-header-sub { font-size: 11px; color: rgba(255,255,255,0.4); }
+  .form-body { padding: 28px 32px; }
+  .field-group { margin-bottom: 20px; }
+  label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 7px; }
+  label .required { color: var(--gold-dim); margin-left: 2px; }
+  textarea, input[type="url"] {
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text-primary);
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    resize: vertical;
+  }
+  textarea:focus, input:focus {
+    border-color: var(--navy-light);
+    box-shadow: 0 0 0 3px rgba(15,30,53,0.06);
+    background: var(--white);
+  }
+  textarea { min-height: 160px; line-height: 1.6; }
+  .field-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+  .form-footer { padding: 0 32px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--navy);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    padding: 13px 28px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .submit-btn:hover { background: var(--navy-light); }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+  .btn-arrow { font-size: 16px; transition: transform 0.2s; }
+  .submit-btn:hover .btn-arrow { transform: translateX(3px); }
+  .btn-note { font-size: 12px; color: var(--text-muted); font-style: italic; }
+  #status-area { display: none; }
+  .status-card { border-radius: 10px; padding: 18px 22px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 14px; }
+  .status-processing { background: #eff6ff; border: 1px solid #bfdbfe; }
+  .status-success { background: var(--success-bg); border: 1px solid #a7f3d0; }
+  .status-error { background: var(--error-bg); border: 1px solid #fecaca; }
+  .status-icon { font-size: 20px; margin-top: 1px; flex-shrink: 0; }
+  .status-content { flex: 1; }
+  .status-title { font-weight: 500; font-size: 14px; margin-bottom: 3px; }
+  .status-processing .status-title { color: #1e40af; }
+  .status-success .status-title { color: var(--success); }
+  .status-error .status-title { color: var(--error); }
+  .status-msg { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .pipeline-track { display: flex; align-items: center; margin-bottom: 32px; overflow-x: auto; padding-bottom: 4px; }
+  .pipeline-stage { display: flex; align-items: center; flex: 1; min-width: 0; }
+  .stage-node { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+  .stage-circle {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500;
+    border: 2px solid var(--border);
+    background: var(--cream); color: var(--text-muted);
+    transition: all 0.3s; flex-shrink: 0;
+  }
+  .stage-circle.active { border-color: #3b82f6; background: #eff6ff; color: #1e40af; animation: ring-pulse 1.5s infinite; }
+  .stage-circle.done { border-color: var(--success); background: var(--success-bg); color: var(--success); }
+  @keyframes ring-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); } 50% { box-shadow: 0 0 0 5px rgba(59,130,246,0); } }
+  .stage-label { font-size: 10px; font-weight: 500; color: var(--text-muted); text-align: center; white-space: nowrap; }
+  .stage-label.active { color: #1e40af; }
+  .stage-label.done { color: var(--success); }
+  .stage-connector { height: 2px; background: var(--border); flex: 1; margin-bottom: 22px; transition: background 0.3s; min-width: 16px; }
+  .stage-connector.done { background: var(--success); }
+  #results-area { display: none; }
+  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .results-title { font-family: 'DM Serif Display', serif; font-size: 22px; font-weight: 400; }
+  .results-meta { font-size: 12px; color: var(--text-muted); }
+  .score-hero {
+    background: var(--navy); border-radius: 12px; padding: 28px 32px; margin-bottom: 24px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 28px; align-items: center;
+    position: relative; overflow: hidden;
+  }
+  .score-hero::before { content: ''; position: absolute; right: -30px; top: -30px; width: 180px; height: 180px; border: 1px solid rgba(200,168,75,0.15); border-radius: 50%; }
+  .score-number { font-family: 'DM Serif Display', serif; font-size: 64px; font-weight: 400; line-height: 1; color: var(--gold-light); }
+  .score-number span { font-size: 22px; color: var(--gold-dim); }
+  .score-details { position: relative; z-index: 1; }
+  .score-label { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+  .score-title { font-size: 20px; font-weight: 500; color: var(--white); margin-bottom: 4px; }
+  .score-subtitle { font-size: 13px; color: rgba(255,255,255,0.5); }
+  .fit-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 24px; font-size: 12px; font-weight: 500; position: relative; z-index: 1; }
+  .fit-strong { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+  .fit-moderate { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+  .fit-stretch { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
+  .fit-pass { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .module-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .module-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow-sm); }
+  .module-name { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .module-score-row { display: flex; align-items: center; gap: 10px; }
+  .module-score-val { font-size: 22px; font-weight: 500; color: var(--text-primary); min-width: 36px; }
+  .score-bar-wrap { flex: 1; height: 4px; background: var(--cream-dark); border-radius: 2px; overflow: hidden; }
+  .score-bar { height: 100%; border-radius: 2px; background: var(--navy); transition: width 0.8s ease; width: 0; }
+  .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .detail-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; box-shadow: var(--shadow-sm); }
+  .detail-card.full-width { grid-column: 1 / -1; }
+  .detail-card-label { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 10px; }
+  .detail-card-value { font-size: 13px; color: var(--text-secondary); line-height: 1.65; }
+  .detail-tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .detail-tag { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 4px; background: var(--cream); color: var(--text-secondary); border: 1px solid var(--border); }
+  .meta-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .meta-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 5px 12px; border-radius: 20px; background: var(--cream); color: var(--text-secondary); border: 1px solid var(--border); }
+  .notion-link-row { background: var(--cream); border: 1px solid var(--border-gold); border-radius: 10px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px; }
+  .notion-link-text { font-size: 13px; color: var(--text-secondary); }
+  .notion-link-text strong { color: var(--text-primary); font-weight: 500; }
+  .notion-btn { display: inline-flex; align-items: center; gap: 6px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); background: var(--white); color: var(--text-primary); text-decoration: none; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+  .notion-btn:hover { background: var(--cream); }
+  footer { text-align: center; padding: 32px 40px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border); }
+  footer a { color: var(--navy); text-decoration: none; }
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 600px) {
+    .header-inner, main { padding-left: 20px; padding-right: 20px; }
+    .details-grid { grid-template-columns: 1fr; }
+    .score-hero { grid-template-columns: 1fr; gap: 12px; }
+    .form-body, .form-footer { padding-left: 20px; padding-right: 20px; }
+  }
+</style>
+</head>
+<body>
 
-const app = express();
-app.use(cors());
-app.use(express.json({ limit: '50kb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+<header>
+  <div class="header-inner">
+    <div class="header-eyebrow">Live Portfolio Demo</div>
+    <h1>Job Posting <em>Analyzer</em></h1>
+    <p class="header-sub">Paste any job posting and watch a multi-agent AI pipeline extract, score, and evaluate it in real time — writing results directly to a live Notion database.</p>
+    <div class="header-badges">
+      <div class="badge"><span class="badge-dot"></span>Notion MCP Integration</div>
+      <div class="badge"><span class="badge-dot"></span>8-Module Scoring Engine</div>
+      <div class="badge"><span class="badge-dot"></span>Company Enrichment</div>
+      <div class="badge"><span class="badge-dot"></span>Contact Discovery</div>
+    </div>
+  </div>
+</header>
 
-const PIPELINE_SYSTEM = `You are the Job Intake Pipeline agent for a career management platform.
-You have access to Notion via MCP. Process job postings end-to-end through all 4 pipeline steps.
+<main>
+  <div class="how-it-works">
+    <div class="section-label">How it works</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-title">Paste &amp; submit</div>
+        <div class="step-desc">Drop any job posting text and URL into the form below.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-title">AI pipeline runs</div>
+        <div class="step-desc">8 scoring modules extract metadata, keywords, skills, and fit signals.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-title">Company enriched</div>
+        <div class="step-desc">Company record created and enriched with contacts via web research.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-title">Results in Notion</div>
+        <div class="step-desc">All output written live to the Notion database visible below.</div>
+      </div>
+    </div>
+  </div>
 
-DATABASE IDs:
-- Job Postings DB: 403582a0e82b4e349c300a084f332ad1
-- Companies DB: b3e93effd284415280a842c6ef5ffc92
-- Modular Resume Library: d74582b89b3e44de8fcb7437a59dadb1
+  <div class="form-card">
+    <div class="form-header">
+      <div class="form-header-title">
+        <div class="pulse-dot"></div>
+        Pipeline ready
+      </div>
+      <div class="form-header-sub">Notion MCP connected</div>
+    </div>
+    <div class="form-body">
+      <div class="field-group">
+        <label for="posting-text">Job posting text <span class="required">*</span></label>
+        <textarea id="posting-text" placeholder="Paste the full job description here — including responsibilities, requirements, and company description..."></textarea>
+        <div class="field-hint">Include the full posting for best results. Longer text = more accurate scoring.</div>
+      </div>
+      <div class="field-group">
+        <label for="posting-url">Job posting URL <span class="required">*</span></label>
+        <input type="url" id="posting-url" placeholder="https://www.linkedin.com/jobs/view/..." />
+        <div class="field-hint">Direct link to the original posting. Used for source tracking.</div>
+      </div>
+    </div>
+    <div class="form-footer">
+      <button class="submit-btn" id="submit-btn" onclick="startPipeline()">
+        Analyze posting <span class="btn-arrow">→</span>
+      </button>
+      <div class="btn-note">Processing takes 60–90 seconds</div>
+    </div>
+  </div>
 
-GLOBAL RULES:
-- Never rename, delete, or clear fields
-- Never overwrite non-empty fields (except scoring fields)
-- Never create duplicate company records
-- Never require user confirmation mid-pipeline
-- Always complete all 4 steps even if individual steps return partial results
-- If any step fails, log it and continue`;
+  <div id="status-area">
+    <div class="status-card status-processing" id="status-card">
+      <div class="status-icon">⏳</div>
+      <div class="status-content">
+        <div class="status-title" id="status-title">Starting pipeline...</div>
+        <div class="status-msg" id="status-msg">Connecting to Notion and initializing agents.</div>
+      </div>
+    </div>
+    <div class="pipeline-track">
+      <div class="pipeline-stage">
+        <div class="stage-node">
+          <div class="stage-circle waiting" id="stage-1">1</div>
+          <div class="stage-label waiting" id="stage-1-label">Intake</div>
+        </div>
+      </div>
+      <div class="stage-connector" id="conn-1"></div>
+      <div class="pipeline-stage">
+        <div class="stage-node">
+          <div class="stage-circle waiting" id="stage-2">2</div>
+          <div class="stage-label waiting" id="stage-2-label">Modules 1–5</div>
+        </div>
+      </div>
+      <div class="stage-connector" id="conn-2"></div>
+      <div class="pipeline-stage">
+        <div class="stage-node">
+          <div class="stage-circle waiting" id="stage-3">3</div>
+          <div class="stage-label waiting" id="stage-3-label">Hybrid Score</div>
+        </div>
+      </div>
+      <div class="stage-connector" id="conn-3"></div>
+      <div class="pipeline-stage">
+        <div class="stage-node">
+          <div class="stage-circle waiting" id="stage-4">4</div>
+          <div class="stage-label waiting" id="stage-4-label">Company</div>
+        </div>
+      </div>
+      <div class="stage-connector" id="conn-4"></div>
+      <div class="pipeline-stage">
+        <div class="stage-node">
+          <div class="stage-circle waiting" id="stage-5">5</div>
+          <div class="stage-label waiting" id="stage-5-label">Contacts</div>
+        </div>
+      </div>
+      <div class="stage-connector" id="conn-5"></div>
+      <div class="pipeline-stage">
+        <div class="stage-node">
+          <div class="stage-circle waiting" id="stage-6">6</div>
+          <div class="stage-label waiting" id="stage-6-label">Write-back</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-function buildPrompt(postingText, postingUrl) {
-  return `Process this job posting through the complete 4-step pipeline.
+  <div id="results-area">
+    <div class="results-header">
+      <div class="results-title">Analysis complete</div>
+      <div class="results-meta" id="results-timestamp"></div>
+    </div>
+    <div class="score-hero">
+      <div class="score-number" id="score-number">—<span>/100</span></div>
+      <div class="score-details">
+        <div class="score-label">Hybrid Match Score</div>
+        <div class="score-title" id="result-title">—</div>
+        <div class="score-subtitle" id="result-company">—</div>
+      </div>
+      <div class="fit-badge" id="fit-badge">—</div>
+    </div>
+    <div class="meta-row" id="meta-row"></div>
+    <div class="module-grid" id="module-grid"></div>
+    <div class="details-grid" id="details-grid"></div>
+    <div class="notion-link-row">
+      <div class="notion-link-text">
+        <strong>Full results in Notion</strong> — all 40+ fields written to the Job Postings database, including company record and contact enrichment.
+      </div>
+      <a class="notion-btn" href="https://www.notion.so/35b1850c4a7c801792e1f2a5971785ea" target="_blank">View in Notion →</a>
+    </div>
+  </div>
+</main>
 
-JOB POSTING URL: ${postingUrl || 'Not provided'}
+<footer>
+  Built by <a href="https://www.notion.so/d982b19992bb4628813962b9bb59a622">Stephen R. Cherico</a> &nbsp;·&nbsp; Career Intelligence Platform demo &nbsp;·&nbsp; Powered by Claude + Notion MCP &nbsp;·&nbsp; 2026
+</footer>
 
-JOB POSTING TEXT:
-${postingText}
-
-STEP 1 — Create Job Posting record in DB 403582a0e82b4e349c300a084f332ad1:
-Extract and write all metadata:
-- Job Title 1 (from title line or heading)
-- Company Name (Text) (normalized)
-- Location 1 (city/state or Remote)
-- Work Model 1 (Remote / Hybrid / On-Site)
-- Seniority (IC-Senior / IC-Staff / Manager / Director / VP)
-- Role Type (Product Operations / Program Management / Process/Ops Leadership / Implementation / Other)
-- Industry (Technology / Financial Services / Healthcare / Consulting / Other)
-- FINAL — Industry (SaaS / FinTech / HealthTech / Enterprise Tech / Travel Tech / Marketplace / Product Studio)
-- FINAL — Tier (Small 50-200 / Mid 200-1000 / Large 1000+)
-- Salary Min, Salary Max (numeric USD, blank if not posted)
-- Posting Raw = full posting text
-- FINAL — Full Posting = full posting text
-- Posting URL 1 = ${postingUrl || 'null'}
-- FINAL — Job Posting URL = ${postingUrl || 'null'}
-- Source Type = Job Board
-
-Run all 8 scoring modules:
-MODULE 1: Extract keywords, deduplicate, rank → Module 1 Keywords Raw, Cleaned, Score (0-100)
-MODULE 2: Classify domain → Module 2 Domain Signals, Score (0-100)
-MODULE 3: Extract required skills, compare to resume library → Module 3 Required Skills, Skills Match Score (0-100)
-MODULE 4: Detect seniority signals → Module 4 Seniority Signals, Score (0-100)
-MODULE 5: Classify industry → Module 5 Industry Signals, Score (0-100)
-MODULE 6: DISABLED — write "Semantic scoring unavailable" to summary, leave score null
-MODULE 7: Hybrid Score = 0.50×Keywords + 0.30×Domain + 0.20×Seniority (Fast Intake Mode)
-MODULE 8: Recommend 8-12 resume modules from library → Module 8 Recommended Resume Modules, Match Summary
-
-Set evaluation fields:
-- Match Score = Module 7 Hybrid Score
-- Fit Assessment: Strong Fit (80+) / Moderate Fit (65-79) / Stretch (50-64) / Long Shot / Not a Fit (<50)
-- FINAL — Why It Fits (one line)
-- Key Strengths (from: Workflow Design, Cross-Functional Leadership, SaaS Implementation, Global Ops, Regulated Environments, Process Harmonization, Stakeholder Alignment, AI/Automation, ERP/Systems, Change Management)
-- Gaps/Risks (plain text)
-- Evaluation Notes (narrative rationale)
-- Status: Evaluated – Strong (80+) / Evaluated – Moderate (65-79) / Evaluated – Weak (50-64) / Evaluated – Pass (<50)
-- FINAL — Status = Needs Review
-- FINAL — Notes (2-3 sentences: employment type+location+comp context, priority directive, resume tailoring guidance)
-- Next Action = Review & Tailor Resume
-- Date Evaluated = today
-- Next Action Date = tomorrow
-- Lane = Traditional Job Search
-
-STEP 2 — Company Agent:
-- Search Companies DB b3e93effd284415280a842c6ef5ffc92 for matching company name (case-insensitive)
-- If not found, create new record with company name
-- Enrich empty fields from posting text: Website, Industry, Headquarters, Employee Count, Company Summary, Primary Product/Platform, Tech Stack, Company Type
-- Extract any contacts named in posting text (Recruiter, HR, Hiring Manager fields)
-
-STEP 3 — Contacts Agent:
-- Web search for recruiter/talent acquisition, HR/people ops, hiring manager at this company
-- Search patterns: "[Company] recruiter LinkedIn", "[Company] head of HR", "[Company] VP [function]"
-- Write to empty contact fields only — never overwrite existing values
-- If no confident result found, leave blank
-
-STEP 4 — Back-link:
-- Set Company 1 relation on the Job Posting record → the company record page URL
-
-After ALL steps complete, respond with ONLY this JSON (no other text):
-{
-  "success": true,
-  "jobTitle": "string",
-  "companyName": "string",
-  "location": "string",
-  "workModel": "string",
-  "seniority": "string",
-  "industry": "string",
-  "salaryMin": null,
-  "salaryMax": null,
-  "hybridScore": 0,
-  "fitAssessment": "string",
-  "status": "string",
-  "keywordsScore": 0,
-  "domainScore": 0,
-  "skillsScore": 0,
-  "seniorityScore": 0,
-  "industryScore": 0,
-  "keysCleaned": "keyword1, keyword2, keyword3",
-  "domainSignals": "string",
-  "fitRationale": "string",
-  "gapsRisks": "string",
-  "finalNotes": "string",
-  "companyCreated": true,
-  "contactsFound": false
-}`;
+<script>
+function setStage(num, state) {
+  var circle = document.getElementById('stage-' + num);
+  var label = document.getElementById('stage-' + num + '-label');
+  var conn = document.getElementById('conn-' + (num - 1));
+  if (!circle) return;
+  circle.className = 'stage-circle ' + state;
+  label.className = 'stage-label ' + state;
+  if (conn && state === 'done') conn.className = 'stage-connector done';
 }
 
-app.post('/api/analyze', async (req, res) => {
-  const { postingText, postingUrl } = req.body;
+function updateStatus(title, msg, type) {
+  var card = document.getElementById('status-card');
+  var t = document.getElementById('status-title');
+  var m = document.getElementById('status-msg');
+  card.className = 'status-card status-' + type;
+  t.textContent = title;
+  m.textContent = msg;
+  var icons = { processing: '⏳', success: '✅', error: '❌' };
+  card.querySelector('.status-icon').textContent = icons[type] || '⏳';
+}
+
+function getFitClass(fit) {
+  if (!fit) return 'fit-moderate';
+  var f = fit.toLowerCase();
+  if (f.includes('strong')) return 'fit-strong';
+  if (f.includes('moderate')) return 'fit-moderate';
+  if (f.includes('stretch')) return 'fit-stretch';
+  return 'fit-pass';
+}
+
+async function startPipeline() {
+  var postingText = document.getElementById('posting-text').value.trim();
+  var postingUrl = document.getElementById('posting-url').value.trim();
 
   if (!postingText || postingText.length < 100) {
-    return res.status(400).json({ error: 'Posting text too short' });
+    alert('Please paste the full job posting text (at least a few paragraphs).');
+    return;
+  }
+  if (!postingUrl) {
+    alert('Please provide the job posting URL.');
+    return;
   }
 
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-  const NOTION_TOKEN = process.env.NOTION_TOKEN;
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Running pipeline...';
 
-  if (!ANTHROPIC_KEY || !NOTION_TOKEN) {
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
+  document.getElementById('status-area').style.display = 'block';
+  document.getElementById('results-area').style.display = 'none';
+  updateStatus('Pipeline starting...', 'Connecting to Notion MCP and initializing agents.', 'processing');
+
+  var stages = [
+    { delay: 1500,  stage: 1, state: 'active', title: 'Step 1 — Creating job posting record', msg: 'Extracting metadata from posting text...' },
+    { delay: 6000,  stage: 1, state: 'done',   title: 'Metadata extracted', msg: 'Running Modules 1–5: keywords, domain, skills, seniority, industry...' },
+    { delay: 8000,  stage: 2, state: 'active', title: 'Running scoring modules', msg: 'Analyzing keywords, domain signals, and required skills...' },
+    { delay: 20000, stage: 2, state: 'done',   title: 'Modules 1–5 complete', msg: 'Computing Hybrid Score in Fast Intake Mode...' },
+    { delay: 22000, stage: 3, state: 'active', title: 'Computing Hybrid Score', msg: '0.50×Keywords + 0.30×Domain + 0.20×Seniority' },
+    { delay: 27000, stage: 3, state: 'done',   title: 'Hybrid Score computed', msg: 'Writing Job Posting record to Notion...' },
+    { delay: 32000, stage: 4, state: 'active', title: 'Step 2 — Company enrichment', msg: 'Searching for existing company record, enriching profile...' },
+    { delay: 50000, stage: 4, state: 'done',   title: 'Company enriched', msg: 'Running Contacts Lookup via web research...' },
+    { delay: 52000, stage: 5, state: 'active', title: 'Step 3 — Contacts research', msg: 'Searching for recruiter, HR, and hiring manager contacts...' },
+    { delay: 70000, stage: 5, state: 'done',   title: 'Contacts populated', msg: 'Setting Company relation on posting record...' },
+    { delay: 73000, stage: 6, state: 'active', title: 'Step 4 — Back-linking records', msg: 'Connecting posting to company record in Notion...' },
+  ];
+
+  stages.forEach(function(s) {
+    setTimeout(function() {
+      setStage(s.stage, s.state);
+      updateStatus(s.title, s.msg, 'processing');
+    }, s.delay);
+  });
 
   try {
-    const response = await fetch('/api/analyze', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ postingText, postingUrl })
-});
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        system: PIPELINE_SYSTEM,
-        mcp_servers: [{
-          type: 'url',
-          url: 'https://mcp.notion.com/mcp',
-          name: 'notion',
-          authorization_token: NOTION_TOKEN
-        }],
-        messages: [{
-          role: 'user',
-          content: buildPrompt(postingText, postingUrl)
-        }]
-      })
+    var response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postingText: postingText, postingUrl: postingUrl })
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error('Anthropic API error: ' + response.status + ' — ' + err);
+      var errData = await response.json();
+      throw new Error(errData.error || 'Server error ' + response.status);
     }
 
-    const data = await response.json();
-
-    const textContent = data.content
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('');
-
-    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON result in pipeline response');
-
-    const result = JSON.parse(jsonMatch[0]);
+    var result = await response.json();
     if (!result.success) throw new Error('Pipeline reported failure');
 
-    res.json(result);
+    setStage(6, 'done');
+    document.getElementById('conn-5').className = 'stage-connector done';
+    updateStatus('Pipeline complete', 'All 4 steps completed successfully. Results written to Notion.', 'success');
 
-  } catch (err) {
-    console.error('Pipeline error:', err.message);
-    res.status(500).json({ error: err.message });
+    setTimeout(function() { showResults(result); }, 800);
+
+  } catch(err) {
+    updateStatus('Pipeline error', err.message + ' — Please try again.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Analyze posting <span class="btn-arrow">→</span>';
   }
-});
+}
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+function showResults(r) {
+  document.getElementById('results-area').style.display = 'block';
+  document.getElementById('results-timestamp').textContent = 'Processed ' + new Date().toLocaleTimeString();
+  document.getElementById('score-number').innerHTML = Math.round(r.hybridScore || 0) + '<span>/100</span>';
+  document.getElementById('result-title').textContent = r.jobTitle || '—';
+  document.getElementById('result-company').textContent = r.companyName || '—';
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('Career Intelligence Demo running on port ' + PORT));
+  var fitBadge = document.getElementById('fit-badge');
+  fitBadge.textContent = r.fitAssessment || '—';
+  fitBadge.className = 'fit-badge ' + getFitClass(r.fitAssessment);
+
+  var metaRow = document.getElementById('meta-row');
+  var metas = [
+    r.location   && { icon: '📍', text: r.location },
+    r.workModel  && { icon: '💻', text: r.workModel },
+    r.seniority  && { icon: '⭐', text: r.seniority },
+    r.industry   && { icon: '🏢', text: r.industry },
+    (r.salaryMin && r.salaryMax) && { icon: '💰', text: '$' + Math.round(r.salaryMin/1000) + 'k–$' + Math.round(r.salaryMax/1000) + 'k' },
+    r.status     && { icon: '📊', text: r.status },
+  ].filter(Boolean);
+  metaRow.innerHTML = metas.map(function(m) {
+    return '<div class="meta-pill"><span>' + m.icon + '</span>' + m.text + '</div>';
+  }).join('');
+
+  var moduleGrid = document.getElementById('module-grid');
+  var modules = [
+    { name: 'Keywords',     val: r.keywordsScore },
+    { name: 'Domain',       val: r.domainScore },
+    { name: 'Skills match', val: r.skillsScore },
+    { name: 'Seniority',    val: r.seniorityScore },
+    { name: 'Industry',     val: r.industryScore },
+    { name: 'Hybrid score', val: r.hybridScore },
+  ];
+  moduleGrid.innerHTML = modules.map(function(m) {
+    return '<div class="module-card"><div class="module-name">' + m.name + '</div><div class="module-score-row"><div class="module-score-val">' + Math.round(m.val || 0) + '</div><div class="score-bar-wrap"><div class="score-bar" style="width:' + Math.round(m.val || 0) + '%"></div></div></div></div>';
+  }).join('');
+
+  var detailsGrid = document.getElementById('details-grid');
+  var details = [
+    r.fitRationale  && { label: 'Why it fits',             value: r.fitRationale },
+    r.gapsRisks     && { label: 'Gaps &amp; risks',        value: r.gapsRisks },
+    r.keysCleaned   && { label: 'Top keywords extracted',  tags: r.keysCleaned.split(',').map(function(s){return s.trim();}).filter(Boolean) },
+    r.domainSignals && { label: 'Domain signals',          value: r.domainSignals },
+    r.finalNotes    && { label: 'Pipeline notes',          value: r.finalNotes, full: true },
+  ].filter(Boolean);
+
+  detailsGrid.innerHTML = details.map(function(d) {
+    return '<div class="detail-card' + (d.full ? ' full-width' : '') + '"><div class="detail-card-label">' + d.label + '</div>' +
+      (d.value ? '<div class="detail-card-value">' + d.value + '</div>' : '') +
+      (d.tags  ? '<div class="detail-tag-list">' + d.tags.slice(0,16).map(function(t){return '<span class="detail-tag">'+t+'</span>';}).join('') + '</div>' : '') +
+      '</div>';
+  }).join('');
+
+  document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = false;
+  btn.innerHTML = 'Analyze another posting <span class="btn-arrow">→</span>';
+}
+</script>
+</body>
+</html>
