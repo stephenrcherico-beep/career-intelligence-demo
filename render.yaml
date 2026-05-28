@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: career-intelligence-demo
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVarGroups: []
