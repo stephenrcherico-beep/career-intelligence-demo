@@ -143,7 +143,7 @@ app.post('/api/analyze', async (req, res) => {
         'anthropic-beta': 'mcp-client-2025-04-04'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 4000,
         system: PIPELINE_SYSTEM,
         mcp_servers: [{
