@@ -80,6 +80,7 @@ STEP 2 — Company Agent:
 - If not found, create new record with company name
 - Enrich empty fields from posting text: Website, Industry, Headquarters, Employee Count, Company Summary, Primary Product/Platform, Tech Stack, Company Type
 - Extract any contacts named in posting text (Recruiter, HR, Hiring Manager fields)
+- IMPORTANT: After creating or finding the company record, save its Notion page ID (UUID) for use in Step 4
 
 STEP 3 — Contacts Agent:
 - Web search for recruiter/talent acquisition, HR/people ops, hiring manager at this company
@@ -88,7 +89,10 @@ STEP 3 — Contacts Agent:
 - If no confident result found, leave blank
 
 STEP 4 — Back-link:
-- Set Company 1 relation on the Job Posting record → the company record page URL
+- Update the Job Posting record created in Step 1
+- Set the "Company 1" relation field using the company record's Notion page ID (UUID) from Step 2
+- Use the page ID (e.g. "abc123...") directly — do NOT use the page URL
+- The relation field value must be: [{ "id": "<company_page_id>" }]
 
 After ALL steps complete, respond with ONLY this JSON (no other text):
 {
@@ -143,8 +147,8 @@ app.post('/api/analyze', async (req, res) => {
         'anthropic-beta': 'mcp-client-2025-04-04'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 4000,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 16000,
         system: PIPELINE_SYSTEM,
         mcp_servers: [{
           type: 'url',
