@@ -28,7 +28,7 @@ function rt(text) {
   return [{ type: 'text', text: { content: String(text).slice(0, 2000) } }];
 }
 
-// Long rich_text — splits into 2000-char blocks (up to 10 000 chars total)
+// Long rich_text \u2014 splits into 2000-char blocks (up to 10 000 chars total)
 function rtLong(text) {
   if (!text) return [];
   const str = String(text);
@@ -106,43 +106,42 @@ async function createJobPosting(data, postingText, postingUrl, token) {
     'Location 1':                        { rich_text:   rt(data.location) },
     'Source Type':                       { select:      { name: 'Job Board' } },
     'Lane':                              { select:      { name: 'Traditional Job Search' } },
-    'FINAL — Status':                    { select:      { name: 'Needs Review' } },
+    'FINAL \u2014 Status':                    { select:      { name: 'Needs Review' } },
     'Next Action':                       { rich_text:   rt('Review & Tailor Resume') },
     'Posting Raw':                       { rich_text:   rtLong(postingText) },
     'Full Posting':                      { rich_text:   rtLong(postingText) },
-    'FINAL — Full Posting':              { rich_text:   rtLong(postingText) },
+    'FINAL \u2014 Full Posting':              { rich_text:   rtLong(postingText) },
     'Date Evaluated':                    { date:        { start: today } },
     'Next Action Date':                  { date:        { start: tomorrow } },
-    'Module 6 — Semantic Summary':       { rich_text:   rt('Semantic scoring unavailable') }
+    'Module 6 \u2014 Semantic Summary':       { rich_text:   rt('Semantic scoring unavailable') }
   };
 
-  // Selects — only write if value present
+  // Selects \u2014 only write if value present
   if (data.seniority)    props['Seniority']         = { select: sel(data.seniority) };
   if (data.roleType)     props['Role Type']          = { select: sel(data.roleType) };
   if (data.industry)     props['Industry']           = { select: sel(data.industry) };
-  if (data.finalIndustry)props['FINAL — Industry']  = { select: sel(data.finalIndustry) };
-  if (data.finalTier)    props['FINAL — Tier']       = { select: sel(data.finalTier) };
+  if (data.finalIndustry)props['FINAL \u2014 Industry']  = { select: sel(data.finalIndustry) };
+  if (data.finalTier)    props['FINAL \u2014 Tier']       = { select: sel(data.finalTier) };
   if (data.fitAssessment)props['Fit Assessment']     = { select: sel(data.fitAssessment) };
 
   // Numbers
   if (data.matchScore != null)               props['Match Score']                    = { number: data.matchScore };
-  if (data.module1KeywordScore != null)      props['Module 1 — Keyword Score']       = { number: data.module1KeywordScore };
-  if (data.module2DomainScore != null)       props['Module 2 — Domain Score']        = { number: data.module2DomainScore };
-  if (data.module3SkillsMatchScore != null)  props['Module 3 — Skills Match Score']  = { number: data.module3SkillsMatchScore };
-  if (data.module4SeniorityScore != null)    props['Module 4 — Seniority Score']     = { number: data.module4SeniorityScore };
-  if (data.module5IndustryScore != null)     props['Module 5 — Industry Score']      = { number: data.module5IndustryScore };
-  if (data.module7HybridScore != null)       props['Module 7 — Hybrid Score']        = { number: data.module7HybridScore };
+  if (data.module1KeywordScore != null)      props['Module 1 \u2014 Keyword Score']       = { number: data.module1KeywordScore };
+  if (data.module2DomainScore != null)       props['Module 2 \u2014 Domain Score']        = { number: data.module2DomainScore };
+  if (data.module3SkillsMatchScore != null)  props['Module 3 \u2014 Skills Match Score']  = { number: data.module3SkillsMatchScore };
+  if (data.module4SeniorityScore != null)    props['Module 4 \u2014 Seniority Score']     = { number: data.module4SeniorityScore };
+  if (data.module5IndustryScore != null)     props['Module 5 \u2014 Industry Score']      = { number: data.module5IndustryScore };
+  if (data.module7HybridScore != null)       props['Module 7 \u2014 Hybrid Score']        = { number: data.module7HybridScore };
   if (data.salaryMin)                        props['Salary Min']                     = { number: data.salaryMin };
   if (data.salaryMax)                        props['Salary Max']                     = { number: data.salaryMax };
 
   // Long text fields
-  if (data.module1KeywordsRaw)      props['Module 1 — Keywords (Raw)']              = { rich_text: rt(data.module1KeywordsRaw) };
-  if (data.module1KeywordsCleaned)  props['Module 1 — Keywords (Cleaned)']          = { rich_text: rt(data.module1KeywordsCleaned) };
-  if (data.module2DomainSignals)    props['Module 2 — Domain Signals']              = { rich_text: rt(data.module2DomainSignals) };
-  if (data.module3RequiredSkills)   props['Module 3 — Required Skills']             = { rich_text: rt(data.module3RequiredSkills) };
-  if (data.module4SenioritySignals) props['Module 4 — Seniority Signals']           = { rich_text: rt(data.module4SenioritySignals) };
-  if (data.module5IndustrySignals)  props['Module 5 — Industry Signals']            = { rich_text: rt(data.module5IndustrySignals) };
-  if (data.module7WeightedSummary)  props['Module 7 — Weighted Summary']            = { rich_text: rt(data.module7WeightedSummary) };
-  if (data.module8RecommendedModules) props['Module 8 — Recommended Resume Modules']= { rich_text: rt(data.module8RecommendedModules) };
-  if (data.module8MatchSummary)     props['Module 8 — Match Summary (Formatted)']   = { rich_text: rt(data.module8MatchSummary) };
-  if (data.finalWhyItFits)          props['FINAL — Why It 
+  if (data.module1KeywordsRaw)      props['Module 1 \u2014 Keywords (Raw)']              = { rich_text: rt(data.module1KeywordsRaw) };
+  if (data.module1KeywordsCleaned)  props['Module 1 \u2014 Keywords (Cleaned)']          = { rich_text: rt(data.module1KeywordsCleaned) };
+  if (data.module2DomainSignals)    props['Module 2 \u2014 Domain Signals']              = { rich_text: rt(data.module2DomainSignals) };
+  if (data.module3RequiredSkills)   props['Module 3 \u2014 Required Skills']             = { rich_text: rt(data.module3RequiredSkills) };
+  if (data.module4SenioritySignals) props['Module 4 \u2014 Seniority Signals']           = { rich_text: rt(data.module4SenioritySignals) };
+  if (data.module5IndustrySignals)  props['Module 5 \u2014 Industry Signals']            = { rich_text: rt(data.module5IndustrySignals) };
+  if (data.module7WeightedSummary)  props['Module 7 \u2014 Weighted Summary']            = { rich_text: rt(data.module7WeightedSummary) };
+  if (data.module8RecommendedModules) props['Module 8 \u2014 Recommended Resume Modules']= { rich_text: rt(data.module8RecommendedModules) };
+  if (data.module8MatchSummary)     props['Module 8 \u2014 Match Summary (Formatted)
