@@ -358,7 +358,7 @@
     transition: all 0.3s;
   }
   .enrich-stage-circle.waiting  { background: #f0f0f0; color: #aaa; border: 2px solid #ddd; }
-  .enrich-stage-circle.active   { background: var(--navy); color: white; border: 2px solid var(--navy); animation: ring-pulse 1.2s infinite; }
+  .enrich-stage-circle.active   { background: var(--navy); color: white; border: 2px solid var(--navy); animation: pulse-ring 1.2s infinite; }
   .enrich-stage-circle.done     { background: var(--success); color: white; border: 2px solid var(--success); }
   .enrich-stage-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
   .enrich-stage-label.done { color: var(--success); }
@@ -617,6 +617,7 @@ function updateStatus(title, msg, type) {
   card.className = 'status-card status-' + type;
   t.textContent  = title;
   m.textContent  = msg;
+  var icons = { processing: 'processing', success: 'success', error: 'error' };
   var iconMap = { processing: '⏳', success: '✅', error: '❌' };
   card.querySelector('.status-icon').textContent = iconMap[type] || '⏳';
 }
@@ -657,15 +658,17 @@ async function startPipeline() {
 
   document.getElementById('status-area').style.display  = 'block';
   document.getElementById('results-area').style.display = 'none';
-  document.getElementById('enrich-area').style.display  = 'none';
   updateStatus('Pipeline starting...', 'Initializing analysis...', 'processing');
 
+  // Reset all stages to waiting
   for (var i = 1; i <= 6; i++) { setStage(i, 'waiting'); }
   for (var i = 1; i <= 5; i++) {
     var c = document.getElementById('conn-' + i);
     if (c) c.className = 'stage-connector';
   }
 
+  // Cosmetic stage progression — timers get CANCELLED when the API responds.
+  // These fire relative to submission and show activity while Claude is working.
   var pendingTimers = [];
   var stages = [
     { delay:  1000, stage: 1, state: 'active', title: 'Parsing posting...', msg: 'Extracting metadata and sending to Claude for analysis.' },
@@ -674,9 +677,9 @@ async function startPipeline() {
     { delay: 18000, stage: 2, state: 'done',   title: 'Modules 1-5 complete', msg: 'Computing Hybrid Score (0.50 x Keywords + 0.30 x Domain + 0.20 x Seniority)...' },
     { delay: 19000, stage: 3, state: 'active', title: 'Computing Hybrid Score', msg: 'Weighing module scores to produce final fit rating...' },
     { delay: 23000, stage: 3, state: 'done',   title: 'Hybrid Score computed', msg: 'Looking up company in Notion, creating record if new...' },
-    { delay: 24000, stage: 4, state: 'active', title: 'Company lookup', msg: 'Searching for existing company record, creating if not found...' },
-    { delay: 35000, stage: 4, state: 'done',   title: 'Company record ready', msg: 'Preparing contact fields...' },
-    { delay: 36000, stage: 5, state: 'active', title: 'Contacts step', msg: 'Contact enrichment available after write-back via Enrich button.' },
+    { delay: 24000, stage: 4, state: 'active', title: 'Company enrichment', msg: 'Searching for existing company record, creating if not found...' },
+    { delay: 35000, stage: 4, state: 'done',   title: 'Company record ready', msg: 'Searching for contacts associated with this role...' },
+    { delay: 36000, stage: 5, state: 'active', title: 'Contacts lookup', msg: 'Searching for recruiter and hiring manager contacts...' },
     { delay: 44000, stage: 5, state: 'done',   title: 'Contacts step complete', msg: 'Writing all results to Notion and linking company record...' },
     { delay: 45000, stage: 6, state: 'active', title: 'Writing to Notion', msg: 'Creating job posting record and connecting to company...' },
   ];
@@ -696,6 +699,7 @@ async function startPipeline() {
       body: JSON.stringify({ postingText: postingText, postingUrl: postingUrl })
     });
 
+    // Cancel ALL pending cosmetic timers — API has responded.
     pendingTimers.forEach(function(id) { clearTimeout(id); });
 
     if (!response.ok) {
@@ -706,6 +710,7 @@ async function startPipeline() {
     var result = await response.json();
     if (!result.success) throw new Error('Pipeline reported failure');
 
+    // Mark every stage complete and show success.
     completeAllStages();
     updateStatus('Pipeline complete', 'All steps completed. Results written to Notion.', 'success');
 
@@ -722,7 +727,7 @@ async function startPipeline() {
 function showResults(r) {
   _enrichCompanyPageId = r.companyPageId || null;
   _enrichCompanyName   = r.companyName   || '';
-
+  // Show enrich button if we have a company page ID
   var enrichArea = document.getElementById('enrich-area');
   if (_enrichCompanyPageId) {
     enrichArea.style.display = 'block';
@@ -732,7 +737,6 @@ function showResults(r) {
     eb.disabled = false;
     eb.textContent = 'Enrich Now →';
   }
-
   document.getElementById('results-area').style.display = 'block';
   document.getElementById('results-timestamp').textContent = 'Processed ' + new Date().toLocaleTimeString();
   document.getElementById('score-number').innerHTML = Math.round(r.hybridScore || 0) + '<span>/100</span>';
@@ -816,15 +820,17 @@ async function startEnrichment() {
   pipeline.style.display = 'block';
   results.style.display  = 'none';
 
+  // Reset stages
   for (var i = 1; i <= 3; i++) setEnrichStage(i, 'waiting');
   document.getElementById('ec-1').className = 'enrich-conn';
   document.getElementById('ec-2').className = 'enrich-conn';
 
   function setMsg(msg) { document.getElementById('enrich-status-msg').textContent = msg; }
 
+  // Cosmetic timers
   var t1 = setTimeout(function() { setEnrichStage(1, 'active'); setMsg('Reading existing company record from Notion...'); }, 300);
-  var t2 = setTimeout(function() { setEnrichStage(1, 'done'); setEnrichStage(2, 'active'); setMsg('Asking Claude about ' + _enrichCompanyName + '...'); }, 1800);
-  var t3 = setTimeout(function() { setEnrichStage(2, 'done'); setEnrichStage(3, 'active'); setMsg('Writing enriched fields to Notion...'); }, 4500);
+  var t2 = setTimeout(function() { setEnrichStage(1, 'done');  setEnrichStage(2, 'active'); setMsg('Asking Claude about ' + _enrichCompanyName + '...'); }, 1800);
+  var t3 = setTimeout(function() { setEnrichStage(2, 'done');  setEnrichStage(3, 'active'); setMsg('Writing enriched fields to Notion...'); }, 4500);
 
   try {
     var response = await fetch('/api/enrich', {
@@ -842,19 +848,34 @@ async function startEnrichment() {
 
     var result = await response.json();
 
+    // Complete all enrich stages
     for (var i = 1; i <= 3; i++) setEnrichStage(i, 'done');
     document.getElementById('ec-1').className = 'enrich-conn done';
     document.getElementById('ec-2').className = 'enrich-conn done';
 
-    var count  = result.fieldsUpdated || 0;
-    var fields = result.fieldsList    || [];
+    var count = result.fieldsUpdated || 0;
+    var fields = result.fieldsList   || [];
 
     setMsg('Complete — ' + count + ' field' + (count !== 1 ? 's' : '') + ' enriched.');
 
+    // Show results
     results.style.display = 'block';
     var listEl = document.getElementById('enrich-field-list');
     if (count === 0) {
-      listEl.innerHTML = '<div class="enrich-none-msg">All fields were already populated — nothing to update.</div>';
+      var dbg = result.debug || {};
+      var dbgLines = [];
+      dbgLines.push('Serper web search used: ' + (dbg.serperUsed ? 'YES (' + dbg.serperChars + ' chars)' : 'NO — fallback to Claude training'));
+      if (dbg.claudeGot) {
+        var nonNull = Object.entries(dbg.claudeGot).filter(function(e){ return e[1] !== null && e[1] !== ''; });
+        dbgLines.push('Claude returned ' + nonNull.length + ' non-null fields: ' + nonNull.map(function(e){ return e[0]; }).join(', '));
+        var allNull = Object.entries(dbg.claudeGot).filter(function(e){ return e[1] === null; });
+        if (allNull.length) dbgLines.push('Null fields (' + allNull.length + '): ' + allNull.map(function(e){ return e[0]; }).join(', '));
+      }
+      if (dbg.alreadyFilled && dbg.alreadyFilled.length) {
+        dbgLines.push('Already filled in Notion (skipped): ' + dbg.alreadyFilled.join(', '));
+      }
+      listEl.innerHTML = '<div class="enrich-none-msg" style="text-align:left;font-size:12px;line-height:1.7">'
+        + '<strong>0 fields updated.</strong><br>' + dbgLines.join('<br>') + '</div>';
     } else {
       listEl.innerHTML = fields.map(function(f) {
         return '<span class="enrich-field-tag">' + f + '</span>';
