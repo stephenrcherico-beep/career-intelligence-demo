@@ -272,7 +272,7 @@ function buildAnalysisPrompt(postingText, postingUrl) {
     '  "gapsRisks": "identified gaps or risks as plain text",\n' +
     '  "evaluationNotes": "2-3 sentence scoring rationale",\n' +
     '  "compNotes": "comp notes - salary range if stated, bonus structure, equity, benefits highlights. Empty string if none mentioned",\n' +
-    '  "finalNotes": "2-3 sentences on comp/location context, priority, and resume guidance",\n' +
+  '  "finalNotes": "2-3 sentences on comp/location context, priority, and resume guidance",\n' +
     '  "companyWebsite": null,\n' +
     '  "companyIndustry": "industry text",\n' +
     '  "companyHeadquarters": "HQ city/state if known",\n' +
@@ -449,21 +449,25 @@ app.post('/api/enrich', async function(req, res) {
       "{",
       "  \"website\": \"official website URL or null\",",
       "  \"headquarters\": \"HQ city and state/country or null\",",
+      "  \"companyAddress\": \"full mailing address or null\",",
+      "  \"companyPhone\": \"main corporate phone number or null\",",
       "  \"industry\": \"primary industry or null\",",
       "  \"employeeCount\": null,",
+      "  \"glassdoorRating\": null,",
+      "  \"fundingStage\": \"one of: Pre-seed, Seed, Series A, Series B, Series C+, Bootstrapped, Public, Unknown — or null\",",
       "  \"companySummary\": \"2-sentence overview or null\",",
       "  \"primaryProduct\": \"main product or platform or null\",",
       "  \"techStack\": \"known tech stack or null\",",
       "  \"companyType\": \"one of: Employer, Vendor, Recruiting Agency, Staffing Firm, Consulting Firm or null\",",
-      "  \"linkedInUrl\": \"LinkedIn company page URL or null\",",
-      "  \"glassdoorUrl\": \"Glassdoor employer page URL or null\",",
-      "  \"crunchbaseUrl\": \"Crunchbase organization URL or null\",",
       "  \"recruiterName\": null,",
       "  \"recruiterTitle\": null,",
+      "  \"recruiterLinkedInUrl\": null,",
       "  \"hrContactName\": null,",
       "  \"hrContactTitle\": null,",
+      "  \"hrLinkedInUrl\": null,",
       "  \"hiringManagerName\": null,",
-      "  \"hiringManagerTitle\": null",
+      "  \"hiringManagerTitle\": null,",
+      "  \"hiringManagerLinkedInUrl\": null",
       "}",
       "",
       "Return ONLY the JSON. No markdown fences, no commentary."
@@ -494,23 +498,27 @@ app.post('/api/enrich', async function(req, res) {
 
     // Step 3: Build update payload — only write to empty fields
     var updates = {};
-    if (propEmpty(ep['Website'])                     && ed.website)          updates['Website']                    = { url: ed.website };
-    if (propEmpty(ep['Headquarters'])                && ed.headquarters)     updates['Headquarters']               = { rich_text: rt(ed.headquarters) };
-    if (propEmpty(ep['Industry'])                    && ed.industry)         updates['Industry']                   = { rich_text: rt(ed.industry) };
-    if (propEmpty(ep['Employee Count'])              && ed.employeeCount)    updates['Employee Count']             = { number: Number(ed.employeeCount) };
-    if (propEmpty(ep['Company Summary'])             && ed.companySummary)   updates['Company Summary']            = { rich_text: rt(ed.companySummary) };
-    if (propEmpty(ep['Primary Product / Platform'])  && ed.primaryProduct)   updates['Primary Product / Platform'] = { rich_text: rt(ed.primaryProduct) };
-    if (propEmpty(ep['Tech Stack (If Known)'])       && ed.techStack)        updates['Tech Stack (If Known)']      = { rich_text: rt(ed.techStack) };
-    if (propEmpty(ep['Company Type'])                && ed.companyType)      updates['Company Type']               = { select: sel(ed.companyType) };
-    if (propEmpty(ep['LinkedIn URL'])                && ed.linkedInUrl)      updates['LinkedIn URL']               = { url: ed.linkedInUrl };
-    if (propEmpty(ep['Glassdoor URL'])               && ed.glassdoorUrl)     updates['Glassdoor URL']              = { url: ed.glassdoorUrl };
-    if (propEmpty(ep['Crunchbase URL'])              && ed.crunchbaseUrl)    updates['Crunchbase URL']             = { url: ed.crunchbaseUrl };
-    if (propEmpty(ep['Recruiter Name'])              && ed.recruiterName)    updates['Recruiter Name']             = { rich_text: rt(ed.recruiterName) };
-    if (propEmpty(ep['Recruiter Title'])             && ed.recruiterTitle)   updates['Recruiter Title']            = { rich_text: rt(ed.recruiterTitle) };
-    if (propEmpty(ep['HR Contact Name'])             && ed.hrContactName)    updates['HR Contact Name']            = { rich_text: rt(ed.hrContactName) };
-    if (propEmpty(ep['HR Contact Title'])            && ed.hrContactTitle)   updates['HR Contact Title']           = { rich_text: rt(ed.hrContactTitle) };
-    if (propEmpty(ep['Hiring Manager Name'])         && ed.hiringManagerName)updates['Hiring Manager Name']        = { rich_text: rt(ed.hiringManagerName) };
-    if (propEmpty(ep['Hiring Manager Title'])        && ed.hiringManagerTitle)updates['Hiring Manager Title']      = { rich_text: rt(ed.hiringManagerTitle) };
+    if (propEmpty(ep['Website'])                     && ed.website)                  updates['Website']                    = { url: ed.website };
+    if (propEmpty(ep['Headquarters'])                && ed.headquarters)             updates['Headquarters']               = { rich_text: rt(ed.headquarters) };
+    if (propEmpty(ep['Company Address'])             && ed.companyAddress)           updates['Company Address']            = { rich_text: rt(ed.companyAddress) };
+    if (propEmpty(ep['Company Phone'])               && ed.companyPhone)             updates['Company Phone']              = { phone_number: String(ed.companyPhone) };
+    if (propEmpty(ep['Industry'])                    && ed.industry)                 updates['Industry']                   = { rich_text: rt(ed.industry) };
+    if (propEmpty(ep['Employee Count'])              && ed.employeeCount)            updates['Employee Count']             = { number: Number(ed.employeeCount) };
+    if (propEmpty(ep['Glassdoor Rating'])            && ed.glassdoorRating)          updates['Glassdoor Rating']           = { number: Number(ed.glassdoorRating) };
+    if (propEmpty(ep['Funding Stage'])               && ed.fundingStage)             updates['Funding Stage']              = { select: sel(ed.fundingStage) };
+    if (propEmpty(ep['Company Summary'])             && ed.companySummary)           updates['Company Summary']            = { rich_text: rt(ed.companySummary) };
+    if (propEmpty(ep['Primary Product / Platform'])  && ed.primaryProduct)           updates['Primary Product / Platform'] = { rich_text: rt(ed.primaryProduct) };
+    if (propEmpty(ep['Tech Stack (If Known)'])       && ed.techStack)                updates['Tech Stack (If Known)']      = { rich_text: rt(ed.techStack) };
+    if (propEmpty(ep['Company Type'])                && ed.companyType)              updates['Company Type']               = { select: sel(ed.companyType) };
+    if (propEmpty(ep['Recruiter Name'])              && ed.recruiterName)            updates['Recruiter Name']             = { rich_text: rt(ed.recruiterName) };
+    if (propEmpty(ep['Recruiter Title'])             && ed.recruiterTitle)           updates['Recruiter Title']            = { rich_text: rt(ed.recruiterTitle) };
+    if (propEmpty(ep['Recruiter LinkedIn URL'])      && ed.recruiterLinkedInUrl)     updates['Recruiter LinkedIn URL']     = { url: ed.recruiterLinkedInUrl };
+    if (propEmpty(ep['HR Contact Name'])             && ed.hrContactName)            updates['HR Contact Name']            = { rich_text: rt(ed.hrContactName) };
+    if (propEmpty(ep['HR Contact Title'])            && ed.hrContactTitle)           updates['HR Contact Title']           = { rich_text: rt(ed.hrContactTitle) };
+    if (propEmpty(ep['HR Contact LinkedIn URL'])     && ed.hrLinkedInUrl)            updates['HR Contact LinkedIn URL']    = { url: ed.hrLinkedInUrl };
+    if (propEmpty(ep['Hiring Manager Name'])         && ed.hiringManagerName)        updates['Hiring Manager Name']        = { rich_text: rt(ed.hiringManagerName) };
+    if (propEmpty(ep['Hiring Manager Title'])        && ed.hiringManagerTitle)       updates['Hiring Manager Title']       = { rich_text: rt(ed.hiringManagerTitle) };
+    if (propEmpty(ep['Hiring Manager LinkedIn URL']) && ed.hiringManagerLinkedInUrl) updates['Hiring Manager LinkedIn URL']= { url: ed.hiringManagerLinkedInUrl };
 
     var fieldsUpdated = Object.keys(updates).length;
     if (fieldsUpdated > 0) {
