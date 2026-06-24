@@ -397,11 +397,135 @@ app.post('/api/analyze', async function(req, res) {
       gapsRisks:     data.gapsRisks              || '',
       finalNotes:    data.finalNotes             || '',
       companyCreated: companyCreated,
+      companyPageId: companyPageId || null,
       contactsFound: false
     });
 
   } catch (err) {
     console.error('Pipeline error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// --- Enrichment endpoint ------------------------------------------------------
+
+app.post('/api/enrich', async function(req, res) {
+  var companyPageId = req.body.companyPageId;
+  var companyName   = req.body.companyName;
+
+  if (!companyPageId || !companyName) {
+    return res.status(400).json({ error: 'companyPageId and companyName required' });
+  }
+
+  var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  var NOTION_TOKEN  = process.env.NOTION_TOKEN;
+
+  if (!ANTHROPIC_KEY || !NOTION_TOKEN) {
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
+  try {
+    // Step 1: Read existing company record to find empty fields
+    var existing     = await notionRequest('GET', '/pages/' + companyPageId, null, NOTION_TOKEN);
+    var ep           = existing.properties || {};
+
+    function propEmpty(p) {
+      if (!p) return true;
+      if (p.type === 'rich_text') return !p.rich_text || p.rich_text.length === 0 || p.rich_text[0].plain_text === '';
+      if (p.type === 'url')       return !p.url;
+      if (p.type === 'number')    return p.number === null || p.number === undefined;
+      if (p.type === 'select')    return !p.select || !p.select.name;
+      return true;
+    }
+
+    // Step 2: Claude enrichment call (company name only - no posting text)
+    var enrichLines = [
+      "Using your training knowledge, provide factual information about the company \"" + companyName + "\".",
+      "",
+      "Return ONLY valid JSON. Use null for any field you are not confident about.",
+      "Do NOT guess or fabricate. If you do not know, return null.",
+      "",
+      "{",
+      "  \"website\": \"official website URL or null\",",
+      "  \"headquarters\": \"HQ city and state/country or null\",",
+      "  \"industry\": \"primary industry or null\",",
+      "  \"employeeCount\": null,",
+      "  \"companySummary\": \"2-sentence overview or null\",",
+      "  \"primaryProduct\": \"main product or platform or null\",",
+      "  \"techStack\": \"known tech stack or null\",",
+      "  \"companyType\": \"one of: Employer, Vendor, Recruiting Agency, Staffing Firm, Consulting Firm or null\",",
+      "  \"linkedInUrl\": \"LinkedIn company page URL or null\",",
+      "  \"glassdoorUrl\": \"Glassdoor employer page URL or null\",",
+      "  \"crunchbaseUrl\": \"Crunchbase organization URL or null\",",
+      "  \"recruiterName\": null,",
+      "  \"recruiterTitle\": null,",
+      "  \"hrContactName\": null,",
+      "  \"hrContactTitle\": null,",
+      "  \"hiringManagerName\": null,",
+      "  \"hiringManagerTitle\": null",
+      "}",
+      "",
+      "Return ONLY the JSON. No markdown fences, no commentary."
+    ];
+    var enrichPrompt = enrichLines.join("\n");
+
+    var claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: 'You are a company research assistant. Return only valid JSON with confident factual data from your training. Never fabricate data.',
+        messages: [{ role: 'user', content: enrichPrompt }]
+      })
+    });
+
+    if (!claudeRes.ok) throw new Error('Claude enrichment error: ' + claudeRes.status);
+    var cData       = await claudeRes.json();
+    var cText       = cData.content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('');
+    var cMatch      = cText.match(/\{[\s\S]*\}/);
+    if (!cMatch) throw new Error('No JSON from enrichment call');
+    var ed          = JSON.parse(cMatch[0]);
+
+    // Step 3: Build update payload — only write to empty fields
+    var updates = {};
+    if (propEmpty(ep['Website'])                     && ed.website)          updates['Website']                    = { url: ed.website };
+    if (propEmpty(ep['Headquarters'])                && ed.headquarters)     updates['Headquarters']               = { rich_text: rt(ed.headquarters) };
+    if (propEmpty(ep['Industry'])                    && ed.industry)         updates['Industry']                   = { rich_text: rt(ed.industry) };
+    if (propEmpty(ep['Employee Count'])              && ed.employeeCount)    updates['Employee Count']             = { number: Number(ed.employeeCount) };
+    if (propEmpty(ep['Company Summary'])             && ed.companySummary)   updates['Company Summary']            = { rich_text: rt(ed.companySummary) };
+    if (propEmpty(ep['Primary Product / Platform'])  && ed.primaryProduct)   updates['Primary Product / Platform'] = { rich_text: rt(ed.primaryProduct) };
+    if (propEmpty(ep['Tech Stack (If Known)'])       && ed.techStack)        updates['Tech Stack (If Known)']      = { rich_text: rt(ed.techStack) };
+    if (propEmpty(ep['Company Type'])                && ed.companyType)      updates['Company Type']               = { select: sel(ed.companyType) };
+    if (propEmpty(ep['LinkedIn URL'])                && ed.linkedInUrl)      updates['LinkedIn URL']               = { url: ed.linkedInUrl };
+    if (propEmpty(ep['Glassdoor URL'])               && ed.glassdoorUrl)     updates['Glassdoor URL']              = { url: ed.glassdoorUrl };
+    if (propEmpty(ep['Crunchbase URL'])              && ed.crunchbaseUrl)    updates['Crunchbase URL']             = { url: ed.crunchbaseUrl };
+    if (propEmpty(ep['Recruiter Name'])              && ed.recruiterName)    updates['Recruiter Name']             = { rich_text: rt(ed.recruiterName) };
+    if (propEmpty(ep['Recruiter Title'])             && ed.recruiterTitle)   updates['Recruiter Title']            = { rich_text: rt(ed.recruiterTitle) };
+    if (propEmpty(ep['HR Contact Name'])             && ed.hrContactName)    updates['HR Contact Name']            = { rich_text: rt(ed.hrContactName) };
+    if (propEmpty(ep['HR Contact Title'])            && ed.hrContactTitle)   updates['HR Contact Title']           = { rich_text: rt(ed.hrContactTitle) };
+    if (propEmpty(ep['Hiring Manager Name'])         && ed.hiringManagerName)updates['Hiring Manager Name']        = { rich_text: rt(ed.hiringManagerName) };
+    if (propEmpty(ep['Hiring Manager Title'])        && ed.hiringManagerTitle)updates['Hiring Manager Title']      = { rich_text: rt(ed.hiringManagerTitle) };
+
+    var fieldsUpdated = Object.keys(updates).length;
+    if (fieldsUpdated > 0) {
+      await notionRequest('PATCH', '/pages/' + companyPageId, { properties: updates }, NOTION_TOKEN);
+    }
+
+    res.json({
+      success:       true,
+      companyName:   companyName,
+      fieldsUpdated: fieldsUpdated,
+      fieldsList:    Object.keys(updates)
+    });
+
+  } catch (err) {
+    console.error('Enrichment error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
