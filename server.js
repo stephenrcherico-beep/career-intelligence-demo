@@ -125,6 +125,24 @@ async function createCompany(data, token) {
   }, token);
 }
 
+
+// Map fit assessment to Notion Status option
+function getStatusFromFit(fitAssessment) {
+  if (!fitAssessment) return 'Under Evaluation';
+  var f = fitAssessment.toLowerCase();
+  if (f.includes('strong'))   return 'Evaluated – Strong';
+  if (f.includes('moderate')) return 'Evaluated – Moderate';
+  if (f.includes('stretch'))  return 'Evaluated – Weak';
+  return 'Evaluated – Pass';
+}
+
+// Map hybrid score to FINAL — Status option
+function getFinalStatusFromScore(score) {
+  if (!score || score < 65) return 'Low Match';
+  if (score >= 80) return 'High Match';
+  return 'Evaluated';
+}
+
 // --- Job posting helper -------------------------------------------------------
 
 async function createJobPosting(data, postingText, postingUrl, token) {
@@ -145,8 +163,8 @@ async function createJobPosting(data, postingText, postingUrl, token) {
   };
 
   // Fields with em-dash names (using F.* constants)
-  props['Status']           = { status:    { name: 'Intake' } };
-  props[F.finalStatus]      = { select:    { name: 'Needs Review' } };
+  props['Status']           = { status:    { name: getStatusFromFit(data.fitAssessment) } };
+  props[F.finalStatus]      = { select:    { name: getFinalStatusFromScore(data.module7HybridScore) } };
   props[F.finalFullPosting] = { rich_text: rtLong(postingText) };
   props[F.m6Summary]        = { rich_text: rt('Semantic scoring unavailable') };
 
