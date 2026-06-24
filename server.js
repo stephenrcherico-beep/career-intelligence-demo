@@ -12,11 +12,8 @@ const JOBS_DB      = '403582a0e82b4e349c300a084f332ad1';
 const COMPANIES_DB = 'b3e93effd284415280a842c6ef5ffc92';
 const NOTION_API   = 'https://api.notion.com/v1';
 
-// Build em dash from char code so source file stays pure ASCII.
-// String.fromCharCode(8212) === U+2014 === the em dash Notion uses in field names.
 var EM = String.fromCharCode(8212);
 
-// All Notion field names that contain an em dash, built at startup.
 var F = {
   finalStatus:     'FINAL ' + EM + ' Status',
   finalFullPosting:'FINAL ' + EM + ' Full Posting',
@@ -53,13 +50,11 @@ function notionHeaders(token) {
   };
 }
 
-// Short rich_text (<=2000 chars)
 function rt(text) {
   if (!text) return [];
   return [{ type: 'text', text: { content: String(text).slice(0, 2000) } }];
 }
 
-// Long rich_text - splits into 2000-char blocks (up to 10000 chars total)
 function rtLong(text) {
   if (!text) return [];
   var str = String(text);
@@ -125,18 +120,15 @@ async function createCompany(data, token) {
   }, token);
 }
 
-
-// Map fit assessment to Notion Status option
 function getStatusFromFit(fitAssessment) {
   if (!fitAssessment) return 'Under Evaluation';
   var f = fitAssessment.toLowerCase();
-  if (f.includes('strong'))   return 'Evaluated – Strong';
-  if (f.includes('moderate')) return 'Evaluated – Moderate';
-  if (f.includes('stretch'))  return 'Evaluated – Weak';
-  return 'Evaluated – Pass';
+  if (f.includes('strong'))   return 'Evaluated ' + String.fromCharCode(8211) + ' Strong';
+  if (f.includes('moderate')) return 'Evaluated ' + String.fromCharCode(8211) + ' Moderate';
+  if (f.includes('stretch'))  return 'Evaluated ' + String.fromCharCode(8211) + ' Weak';
+  return 'Evaluated ' + String.fromCharCode(8211) + ' Pass';
 }
 
-// Map hybrid score to FINAL -- Status option
 function getFinalStatusFromScore(score) {
   if (!score || score < 65) return 'Low Match';
   if (score >= 80) return 'High Match';
@@ -162,13 +154,11 @@ async function createJobPosting(data, postingText, postingUrl, token) {
     'Next Action Date':     { date:      { start: tomorrow } }
   };
 
-  // Fields with em-dash names (using F.* constants)
   props['Status']           = { status:    { name: getStatusFromFit(data.fitAssessment) } };
   props[F.finalStatus]      = { select:    { name: getFinalStatusFromScore(data.module7HybridScore) } };
   props[F.finalFullPosting] = { rich_text: rtLong(postingText) };
   props[F.m6Summary]        = { rich_text: rt('Semantic scoring unavailable') };
 
-  // Selects - only write if value present
   if (data.workModel)     props['Work Model 1']   = { select: sel(data.workModel) };
   if (data.seniority)     props['Seniority']      = { select: sel(data.seniority) };
   if (data.roleType)      props['Role Type']       = { select: sel(data.roleType) };
@@ -177,7 +167,6 @@ async function createJobPosting(data, postingText, postingUrl, token) {
   if (data.finalTier)     props[F.finalTier]        = { select: sel(data.finalTier) };
   if (data.fitAssessment) props['Fit Assessment']  = { select: sel(data.fitAssessment) };
 
-  // Numbers
   if (data.matchScore != null)              props['Match Score']  = { number: data.matchScore };
   if (data.module1KeywordScore != null)     props[F.m1Score]      = { number: data.module1KeywordScore };
   if (data.module2DomainScore != null)      props[F.m2Score]      = { number: data.module2DomainScore };
@@ -188,7 +177,6 @@ async function createJobPosting(data, postingText, postingUrl, token) {
   if (data.salaryMin)                       props['Salary Min']   = { number: data.salaryMin };
   if (data.salaryMax)                       props['Salary Max']   = { number: data.salaryMax };
 
-  // Long text fields
   if (data.module1KeywordsRaw)        props[F.m1Raw]      = { rich_text: rt(data.module1KeywordsRaw) };
   if (data.module1KeywordsCleaned)    props[F.m1Cleaned]  = { rich_text: rt(data.module1KeywordsCleaned) };
   if (data.module2DomainSignals)      props[F.m2Signals]  = { rich_text: rt(data.module2DomainSignals) };
@@ -204,12 +192,10 @@ async function createJobPosting(data, postingText, postingUrl, token) {
   if (data.compNotes)                 props['Comp Notes']       = { rich_text: rt(data.compNotes) };
   if (data.finalNotes)                props[F.finalNotes]      = { rich_text: rt(data.finalNotes) };
 
-  // Multi-select
   if (data.keyStrengths && data.keyStrengths.length > 0) {
     props['Key Strengths'] = { multi_select: multiSel(data.keyStrengths) };
   }
 
-  // URLs
   if (postingUrl) {
     props['Posting URL 1']    = { url: postingUrl };
     props[F.finalPostingUrl]  = { url: postingUrl };
@@ -271,8 +257,8 @@ function buildAnalysisPrompt(postingText, postingUrl) {
     '  "keyStrengths": ["Workflow Design", "Cross-Functional Leadership"],\n' +
     '  "gapsRisks": "identified gaps or risks as plain text",\n' +
     '  "evaluationNotes": "2-3 sentence scoring rationale",\n' +
-    '  "compNotes": "comp notes - salary range if stated, bonus structure, equity, benefits highlights. Empty string if none mentioned",\n' +
-  '  "finalNotes": "2-3 sentences on comp/location context, priority, and resume guidance",\n' +
+    '  "compNotes": "comp notes if salary stated, else empty string",\n' +
+    '  "finalNotes": "2-3 sentences on comp/location context, priority, and resume guidance",\n' +
     '  "companyWebsite": null,\n' +
     '  "companyIndustry": "industry text",\n' +
     '  "companyHeadquarters": "HQ city/state if known",\n' +
@@ -295,7 +281,7 @@ function buildAnalysisPrompt(postingText, postingUrl) {
     'Return ONLY the JSON. No markdown fences, no commentary.';
 }
 
-// --- Main endpoint ------------------------------------------------------------
+// --- Main analysis endpoint ---------------------------------------------------
 
 app.post('/api/analyze', async function(req, res) {
   var postingText = req.body.postingText;
@@ -313,7 +299,6 @@ app.post('/api/analyze', async function(req, res) {
   }
 
   try {
-    // Step 1: Claude analysis
     var claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -340,65 +325,58 @@ app.post('/api/analyze', async function(req, res) {
     if (!jsonMatch) throw new Error('No JSON in Claude response');
     var data = JSON.parse(jsonMatch[0]);
 
-    // Step 2: Find or create company
-    var companyPageId = null;
+    var companyPageId  = null;
     var companyCreated = false;
     try {
       var existing = await findCompany(data.companyName, NOTION_TOKEN);
       if (existing) {
         companyPageId = existing.id;
-        console.log('Found existing company:', data.companyName, companyPageId);
       } else {
         var newCo = await createCompany(data, NOTION_TOKEN);
         companyPageId = newCo.id;
         companyCreated = true;
-        console.log('Created new company:', data.companyName, companyPageId);
       }
     } catch (companyErr) {
       console.error('Company step error (non-fatal):', companyErr.message);
     }
 
-    // Step 3: Create job posting
     var jobPage   = await createJobPosting(data, postingText, postingUrl, NOTION_TOKEN);
     var jobPageId = jobPage.id;
-    console.log('Created job posting:', data.jobTitle, jobPageId);
 
-    // Step 4: Back-link company to job posting
     if (jobPageId && companyPageId) {
       try {
         await linkCompanyToPosting(jobPageId, companyPageId, NOTION_TOKEN);
-        console.log('Linked company', companyPageId, 'to job posting', jobPageId);
       } catch (linkErr) {
         console.error('Backlink step error (non-fatal):', linkErr.message);
       }
     }
 
     res.json({
-      success:       true,
-      jobTitle:      data.jobTitle      || '',
-      companyName:   data.companyName   || '',
-      location:      data.location      || '',
-      workModel:     data.workModel     || '',
-      seniority:     data.seniority     || '',
-      industry:      data.industry      || '',
-      salaryMin:     data.salaryMin     || null,
-      salaryMax:     data.salaryMax     || null,
-      hybridScore:   data.module7HybridScore    || 0,
-      fitAssessment: data.fitAssessment          || '',
-      status:        'Needs Review',
-      keywordsScore: data.module1KeywordScore    || 0,
-      domainScore:   data.module2DomainScore     || 0,
-      skillsScore:   data.module3SkillsMatchScore|| 0,
-      seniorityScore:data.module4SeniorityScore  || 0,
-      industryScore: data.module5IndustryScore   || 0,
-      keysCleaned:   data.module1KeywordsCleaned || '',
-      domainSignals: data.module2DomainSignals   || '',
-      fitRationale:  data.finalWhyItFits         || '',
-      gapsRisks:     data.gapsRisks              || '',
-      finalNotes:    data.finalNotes             || '',
+      success:        true,
+      jobTitle:       data.jobTitle       || '',
+      companyName:    data.companyName    || '',
+      location:       data.location       || '',
+      workModel:      data.workModel      || '',
+      seniority:      data.seniority      || '',
+      industry:       data.industry       || '',
+      salaryMin:      data.salaryMin      || null,
+      salaryMax:      data.salaryMax      || null,
+      hybridScore:    data.module7HybridScore     || 0,
+      fitAssessment:  data.fitAssessment           || '',
+      status:         'Needs Review',
+      keywordsScore:  data.module1KeywordScore     || 0,
+      domainScore:    data.module2DomainScore      || 0,
+      skillsScore:    data.module3SkillsMatchScore || 0,
+      seniorityScore: data.module4SeniorityScore   || 0,
+      industryScore:  data.module5IndustryScore    || 0,
+      keysCleaned:    data.module1KeywordsCleaned  || '',
+      domainSignals:  data.module2DomainSignals    || '',
+      fitRationale:   data.finalWhyItFits          || '',
+      gapsRisks:      data.gapsRisks               || '',
+      finalNotes:     data.finalNotes              || '',
       companyCreated: companyCreated,
-      companyPageId: companyPageId || null,
-      contactsFound: false
+      companyPageId:  companyPageId || null,
+      contactsFound:  false
     });
 
   } catch (err) {
@@ -407,10 +385,8 @@ app.post('/api/analyze', async function(req, res) {
   }
 });
 
+// --- Serper web search helper -------------------------------------------------
 
-// --- Enrichment endpoint ------------------------------------------------------
-
-// Serper.dev web search helper (returns top 5 snippet strings)
 async function serperSearch(query, apiKey) {
   try {
     var r = await fetch('https://google.serper.dev/search', {
@@ -430,12 +406,14 @@ async function serperSearch(query, apiKey) {
   }
 }
 
+// --- Enrichment endpoint ------------------------------------------------------
+
 app.post('/api/enrich', async function(req, res) {
   var companyPageId = req.body.companyPageId;
   var companyName   = req.body.companyName;
 
-  if (!companyPageId || !companyName) {
-    return res.status(400).json({ error: 'companyPageId and companyName required' });
+  if (!companyName) {
+    return res.status(400).json({ error: 'companyName required' });
   }
 
   var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
@@ -446,25 +424,39 @@ app.post('/api/enrich', async function(req, res) {
   }
 
   try {
-    // Step 1: Read existing company record to find empty fields
-    var existing     = await notionRequest('GET', '/pages/' + companyPageId, null, NOTION_TOKEN);
-    var ep           = existing.properties || {};
+    // Step 1: If no pageId supplied, look up the company by name in Notion
+    if (!companyPageId) {
+      var found = await findCompany(companyName, NOTION_TOKEN);
+      if (!found) {
+        return res.status(404).json({
+          error: 'Company "' + companyName + '" not found in Notion. Run the analyzer first to create the record.'
+        });
+      }
+      companyPageId = found.id;
+      console.log('Found company by name:', companyName, companyPageId);
+    }
+
+    // Step 1b: Read existing record to detect empty fields
+    var existing = await notionRequest('GET', '/pages/' + companyPageId, null, NOTION_TOKEN);
+    var ep       = existing.properties || {};
 
     function propEmpty(p) {
       if (!p) return true;
-      if (p.type === 'rich_text') return !p.rich_text || p.rich_text.length === 0 || p.rich_text[0].plain_text === '';
-      if (p.type === 'url')       return !p.url;
-      if (p.type === 'number')    return p.number === null || p.number === undefined;
-      if (p.type === 'select')    return !p.select || !p.select.name;
+      if (p.type === 'rich_text')    return !p.rich_text || p.rich_text.length === 0 || p.rich_text[0].plain_text === '';
+      if (p.type === 'url')          return !p.url;
+      if (p.type === 'number')       return p.number === null || p.number === undefined;
+      if (p.type === 'select')       return !p.select || !p.select.name;
+      if (p.type === 'phone_number') return !p.phone_number;
+      if (p.type === 'email')        return !p.email;
       return true;
     }
 
-    // Step 2a: Web search (if SERPER_API_KEY is set)
-    var SERPER_KEY = process.env.SERPER_API_KEY || '';
+    // Step 2a: Five targeted Serper searches
+    var SERPER_KEY  = process.env.SERPER_API_KEY || '';
     var searchContext = '';
     if (SERPER_KEY) {
       console.log('Running Serper searches for:', companyName);
-      var [res1, res2, res3, res4, res5] = await Promise.all([
+      var results = await Promise.all([
         serperSearch(companyName + ' headquarters address phone number', SERPER_KEY),
         serperSearch(companyName + ' company overview employees industry funding', SERPER_KEY),
         serperSearch('"' + companyName + '" recruiter "talent acquisition" linkedin', SERPER_KEY),
@@ -472,67 +464,53 @@ app.post('/api/enrich', async function(req, res) {
         serperSearch('"' + companyName + '" "director of product" OR "VP operations" OR "head of product" OR "hiring manager" linkedin', SERPER_KEY)
       ]);
       searchContext = [
-        '=== Address / Phone ===', res1,
-        '=== Company Overview ===', res2,
-        '=== Recruiter / Talent Acquisition Contacts ===',
-        'Look for patterns like "First Last - Title at ' + companyName + '" or "First Last | LinkedIn"',
-        res3,
-        '=== HR / People Ops Contacts ===',
-        'Look for patterns like "First Last - HR Director at ' + companyName + '" or "First Last | LinkedIn"',
-        res4,
-        '=== Hiring Manager / Product Ops Contacts ===',
-        'Look for patterns like "First Last - Director at ' + companyName + '" or "First Last | LinkedIn"',
-        res5
+        '=== Address / Phone ===', results[0],
+        '=== Company Overview ===', results[1],
+        '=== Recruiter / Talent Acquisition (look for "First Last - Title at ' + companyName + '") ===', results[2],
+        '=== HR / People Ops (look for "First Last - HR Director at ' + companyName + '") ===', results[3],
+        '=== Hiring Manager / Product Ops (look for "First Last - Director at ' + companyName + '") ===', results[4]
       ].join('\n');
     }
 
-    // Step 2b: Claude call -- structure web search results (or use training knowledge as fallback)
+    // Step 2b: Claude structures the search results into JSON
     var contextSection = searchContext
-      ? 'WEB SEARCH RESULTS (prefer these over your training data):\n' + searchContext + '\n\n'
+      ? 'WEB SEARCH RESULTS (use these as primary source):\n' + searchContext + '\n\n'
       : '';
 
-    var enrichLines = [
-      contextSection + "Extract factual information about the company \"" + companyName + "\" and return ONLY valid JSON.",
-      "",
-      "CONTACT EXTRACTION RULES:",
-      "- Search result titles often look like: 'First Last - Title at Company | LinkedIn'",
-      "- Extract the person's full name and title from those patterns",
-      "- Recruiter/Talent Acquisition -> recruiterName + recruiterTitle",
-      "- HR Director/People Ops/VP People -> hrContactName + hrContactTitle",
-      "- Director of Product/VP Ops/Hiring Manager -> hiringManagerName + hiringManagerTitle",
-      "- Pick the most senior person found for each role group",
-      "- If a LinkedIn profile URL is shown (linkedin.com/in/...), include it",
-      "- Use null only if NO name is found in the search results for that role",
-      "",
-      "Return ONLY valid JSON. For company fields, use null if not in search results.",
-      "",
-      "{",
-      "  \"website\": \"official website URL or null\",",
-      "  \"headquarters\": \"HQ city and state or null\",",
-      "  \"companyAddress\": \"full street address or null\",",
-      "  \"companyPhone\": \"main corporate phone number or null\",",
-      "  \"industry\": \"primary industry or null\",",
-      "  \"employeeCount\": null,",
-      "  \"glassdoorRating\": null,",
-      "  \"fundingStage\": \"one of: Pre-seed, Seed, Series A, Series B, Series C+, Bootstrapped, Public, Unknown -- or null\",",
-      "  \"companySummary\": \"2-sentence overview or null\",",
-      "  \"primaryProduct\": \"main product or platform or null\",",
-      "  \"techStack\": \"known tech stack or null\",",
-      "  \"companyType\": \"one of: Employer, Vendor, Recruiting Agency, Staffing Firm, Consulting Firm or null\",",
-      "  \"recruiterName\": \"full name from search results or null\",",
-      "  \"recruiterTitle\": \"their exact title from search results or null\",",
-      "  \"recruiterLinkedInUrl\": \"linkedin.com/in/... URL if found or null\",",
-      "  \"hrContactName\": \"full name from search results or null\",",
-      "  \"hrContactTitle\": \"their exact title from search results or null\",",
-      "  \"hrLinkedInUrl\": \"linkedin.com/in/... URL if found or null\",",
-      "  \"hiringManagerName\": \"full name from search results or null\",",
-      "  \"hiringManagerTitle\": \"their exact title from search results or null\",",
-      "  \"hiringManagerLinkedInUrl\": \"linkedin.com/in/... URL if found or null\"",
-      "}",
-      "",
-      "Return ONLY the JSON. No markdown fences, no commentary."
-    ];
-    var enrichPrompt = enrichLines.join("\n");
+    var enrichPrompt = contextSection +
+      'Extract factual information about "' + companyName + '" and return ONLY valid JSON.\n\n' +
+      'CONTACT EXTRACTION RULES:\n' +
+      '- Search titles look like: "First Last - Title at Company | LinkedIn" -- extract the name and title\n' +
+      '- Recruiter/Talent Acquisition -> recruiterName + recruiterTitle\n' +
+      '- HR Director/People Ops/VP People -> hrContactName + hrContactTitle\n' +
+      '- Director of Product/VP Ops/Hiring Manager -> hiringManagerName + hiringManagerTitle\n' +
+      '- Pick the most senior person found for each role group\n' +
+      '- If a linkedin.com/in/... URL appears in results, include it\n' +
+      '- Use null only if NO evidence exists for that field\n\n' +
+      '{\n' +
+      '  "website": "official URL or null",\n' +
+      '  "headquarters": "city and state or null",\n' +
+      '  "companyAddress": "full street address or null",\n' +
+      '  "companyPhone": "main phone number or null",\n' +
+      '  "industry": "primary industry or null",\n' +
+      '  "employeeCount": null,\n' +
+      '  "glassdoorRating": null,\n' +
+      '  "fundingStage": "Pre-seed|Seed|Series A|Series B|Series C+|Bootstrapped|Public|Unknown or null",\n' +
+      '  "companySummary": "2-sentence overview or null",\n' +
+      '  "primaryProduct": "main product or platform or null",\n' +
+      '  "techStack": "known tech stack or null",\n' +
+      '  "companyType": "Employer|Vendor|Recruiting Agency|Staffing Firm|Consulting Firm or null",\n' +
+      '  "recruiterName": "full name from search results or null",\n' +
+      '  "recruiterTitle": "their exact title or null",\n' +
+      '  "recruiterLinkedInUrl": "linkedin.com/in/... or null",\n' +
+      '  "hrContactName": "full name from search results or null",\n' +
+      '  "hrContactTitle": "their exact title or null",\n' +
+      '  "hrLinkedInUrl": "linkedin.com/in/... or null",\n' +
+      '  "hiringManagerName": "full name from search results or null",\n' +
+      '  "hiringManagerTitle": "their exact title or null",\n' +
+      '  "hiringManagerLinkedInUrl": "linkedin.com/in/... or null"\n' +
+      '}\n\n' +
+      'Return ONLY the JSON. No markdown fences, no commentary.';
 
     var claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -550,20 +528,18 @@ app.post('/api/enrich', async function(req, res) {
     });
 
     if (!claudeRes.ok) throw new Error('Claude enrichment error: ' + claudeRes.status);
-    var cData       = await claudeRes.json();
-    var cText       = cData.content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('');
-    var cMatch      = cText.match(/\{[\s\S]*\}/);
+    var cData  = await claudeRes.json();
+    var cText  = cData.content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('');
+    var cMatch = cText.match(/\{[\s\S]*\}/);
     if (!cMatch) throw new Error('No JSON from enrichment call');
-    var ed          = JSON.parse(cMatch[0]);
+    var ed = JSON.parse(cMatch[0]);
 
     console.log('Enrichment Claude output for', companyName, ':', JSON.stringify(ed));
-    console.log('Serper used:', !!SERPER_KEY, '| searchContext length:', searchContext.length);
+    console.log('Serper used:', !!SERPER_KEY, '| context chars:', searchContext.length);
 
-    // Which fields already have values (will be skipped)
     var alreadyFilled = Object.keys(ep).filter(function(k) { return !propEmpty(ep[k]); });
-    console.log('Already filled fields (will skip):', alreadyFilled.join(', '));
 
-    // Step 3: Build update payload -- only write to empty fields
+    // Step 3: Write only empty fields
     var updates = {};
     if (propEmpty(ep['Website'])                     && ed.website)                  updates['Website']                    = { url: ed.website };
     if (propEmpty(ep['Headquarters'])                && ed.headquarters)             updates['Headquarters']               = { rich_text: rt(ed.headquarters) };
@@ -592,15 +568,10 @@ app.post('/api/enrich', async function(req, res) {
       await notionRequest('PATCH', '/pages/' + companyPageId, { properties: updates }, NOTION_TOKEN);
     }
 
-    console.log('Enrichment Claude output for', companyName, ':', JSON.stringify(ed));
-    console.log('Serper used:', !!SERPER_KEY, '| searchContext length:', searchContext.length);
-
-    var alreadyFilled = Object.keys(ep).filter(function(k) { return !propEmpty(ep[k]); });
-    console.log('Already filled fields (will skip):', alreadyFilled.join(', '));
-
     res.json({
       success:        true,
       companyName:    companyName,
+      companyPageId:  companyPageId,
       fieldsUpdated:  fieldsUpdated,
       fieldsList:     Object.keys(updates),
       debug: {
