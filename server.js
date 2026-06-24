@@ -136,7 +136,7 @@ function getStatusFromFit(fitAssessment) {
   return 'Evaluated – Pass';
 }
 
-// Map hybrid score to FINAL — Status option
+// Map hybrid score to FINAL -- Status option
 function getFinalStatusFromScore(score) {
   if (!score || score < 65) return 'Low Match';
   if (score >= 80) return 'High Match';
@@ -464,29 +464,47 @@ app.post('/api/enrich', async function(req, res) {
     var searchContext = '';
     if (SERPER_KEY) {
       console.log('Running Serper searches for:', companyName);
-      var [res1, res2, res3] = await Promise.all([
+      var [res1, res2, res3, res4, res5] = await Promise.all([
         serperSearch(companyName + ' headquarters address phone number', SERPER_KEY),
-        serperSearch(companyName + ' HR recruiter hiring manager talent acquisition', SERPER_KEY),
-        serperSearch(companyName + ' company overview industry employees funding', SERPER_KEY)
+        serperSearch(companyName + ' company overview employees industry funding', SERPER_KEY),
+        serperSearch('"' + companyName + '" recruiter "talent acquisition" linkedin', SERPER_KEY),
+        serperSearch('"' + companyName + '" "HR director" OR "head of HR" OR "people operations" OR "VP people" linkedin', SERPER_KEY),
+        serperSearch('"' + companyName + '" "director of product" OR "VP operations" OR "head of product" OR "hiring manager" linkedin', SERPER_KEY)
       ]);
       searchContext = [
         '=== Address / Phone ===', res1,
-        '=== HR / Recruiting Contacts ===', res2,
-        '=== Company Overview ===', res3
+        '=== Company Overview ===', res2,
+        '=== Recruiter / Talent Acquisition Contacts ===',
+        'Look for patterns like "First Last - Title at ' + companyName + '" or "First Last | LinkedIn"',
+        res3,
+        '=== HR / People Ops Contacts ===',
+        'Look for patterns like "First Last - HR Director at ' + companyName + '" or "First Last | LinkedIn"',
+        res4,
+        '=== Hiring Manager / Product Ops Contacts ===',
+        'Look for patterns like "First Last - Director at ' + companyName + '" or "First Last | LinkedIn"',
+        res5
       ].join('\n');
     }
 
-    // Step 2b: Claude call — structure web search results (or use training knowledge as fallback)
+    // Step 2b: Claude call -- structure web search results (or use training knowledge as fallback)
     var contextSection = searchContext
-      ? 'WEB SEARCH RESULTS:\n' + searchContext + '\n\nUsing the web search results above (prefer them over your training data), '
-      : 'Using your training knowledge, ';
+      ? 'WEB SEARCH RESULTS (prefer these over your training data):\n' + searchContext + '\n\n'
+      : '';
 
     var enrichLines = [
-      contextSection + "extract factual information about \"" + companyName + "\" and return ONLY valid JSON.",
+      contextSection + "Extract factual information about the company \"" + companyName + "\" and return ONLY valid JSON.",
       "",
-      "Return ONLY valid JSON. Use null for any field you cannot find evidence for.",
-      "Do NOT fabricate data. Only include values that appear in the search results or that you are highly confident about.",
-      "For recruiter/HR contacts: pick the single most senior person per role group (Recruiter, HR Contact, Hiring Manager).",
+      "CONTACT EXTRACTION RULES:",
+      "- Search result titles often look like: 'First Last - Title at Company | LinkedIn'",
+      "- Extract the person's full name and title from those patterns",
+      "- Recruiter/Talent Acquisition -> recruiterName + recruiterTitle",
+      "- HR Director/People Ops/VP People -> hrContactName + hrContactTitle",
+      "- Director of Product/VP Ops/Hiring Manager -> hiringManagerName + hiringManagerTitle",
+      "- Pick the most senior person found for each role group",
+      "- If a LinkedIn profile URL is shown (linkedin.com/in/...), include it",
+      "- Use null only if NO name is found in the search results for that role",
+      "",
+      "Return ONLY valid JSON. For company fields, use null if not in search results.",
       "",
       "{",
       "  \"website\": \"official website URL or null\",",
@@ -496,20 +514,20 @@ app.post('/api/enrich', async function(req, res) {
       "  \"industry\": \"primary industry or null\",",
       "  \"employeeCount\": null,",
       "  \"glassdoorRating\": null,",
-      "  \"fundingStage\": \"one of: Pre-seed, Seed, Series A, Series B, Series C+, Bootstrapped, Public, Unknown — or null\",",
+      "  \"fundingStage\": \"one of: Pre-seed, Seed, Series A, Series B, Series C+, Bootstrapped, Public, Unknown -- or null\",",
       "  \"companySummary\": \"2-sentence overview or null\",",
       "  \"primaryProduct\": \"main product or platform or null\",",
       "  \"techStack\": \"known tech stack or null\",",
       "  \"companyType\": \"one of: Employer, Vendor, Recruiting Agency, Staffing Firm, Consulting Firm or null\",",
-      "  \"recruiterName\": \"most senior recruiter/talent acquisition contact name or null\",",
-      "  \"recruiterTitle\": \"their title or null\",",
-      "  \"recruiterLinkedInUrl\": null,",
-      "  \"hrContactName\": \"HR director or people ops contact name or null\",",
-      "  \"hrContactTitle\": \"their title or null\",",
-      "  \"hrLinkedInUrl\": null,",
-      "  \"hiringManagerName\": \"hiring manager or head of product/ops name or null\",",
-      "  \"hiringManagerTitle\": \"their title or null\",",
-      "  \"hiringManagerLinkedInUrl\": null",
+      "  \"recruiterName\": \"full name from search results or null\",",
+      "  \"recruiterTitle\": \"their exact title from search results or null\",",
+      "  \"recruiterLinkedInUrl\": \"linkedin.com/in/... URL if found or null\",",
+      "  \"hrContactName\": \"full name from search results or null\",",
+      "  \"hrContactTitle\": \"their exact title from search results or null\",",
+      "  \"hrLinkedInUrl\": \"linkedin.com/in/... URL if found or null\",",
+      "  \"hiringManagerName\": \"full name from search results or null\",",
+      "  \"hiringManagerTitle\": \"their exact title from search results or null\",",
+      "  \"hiringManagerLinkedInUrl\": \"linkedin.com/in/... URL if found or null\"",
       "}",
       "",
       "Return ONLY the JSON. No markdown fences, no commentary."
@@ -525,8 +543,8 @@ app.post('/api/enrich', async function(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: 'You are a company research assistant. Return only valid JSON with confident factual data from your training. Never fabricate data.',
+        max_tokens: 1200,
+        system: 'You are a company research assistant. Extract structured data from web search results. Parse person names and titles from LinkedIn-style search snippets. Return only valid JSON.',
         messages: [{ role: 'user', content: enrichPrompt }]
       })
     });
@@ -545,7 +563,7 @@ app.post('/api/enrich', async function(req, res) {
     var alreadyFilled = Object.keys(ep).filter(function(k) { return !propEmpty(ep[k]); });
     console.log('Already filled fields (will skip):', alreadyFilled.join(', '));
 
-    // Step 3: Build update payload — only write to empty fields
+    // Step 3: Build update payload -- only write to empty fields
     var updates = {};
     if (propEmpty(ep['Website'])                     && ed.website)                  updates['Website']                    = { url: ed.website };
     if (propEmpty(ep['Headquarters'])                && ed.headquarters)             updates['Headquarters']               = { rich_text: rt(ed.headquarters) };
@@ -574,6 +592,11 @@ app.post('/api/enrich', async function(req, res) {
       await notionRequest('PATCH', '/pages/' + companyPageId, { properties: updates }, NOTION_TOKEN);
     }
 
+    console.log('Enrichment Claude output for', companyName, ':', JSON.stringify(ed));
+    console.log('Serper used:', !!SERPER_KEY, '| searchContext length:', searchContext.length);
+
+    var alreadyFilled = Object.keys(ep).filter(function(k) { return !propEmpty(ep[k]); });
+    console.log('Already filled fields (will skip):', alreadyFilled.join(', '));
 
     res.json({
       success:        true,
