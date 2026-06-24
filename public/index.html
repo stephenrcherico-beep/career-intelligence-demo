@@ -301,7 +301,7 @@
     <h1>Job Posting <em>Analyzer</em></h1>
     <p class="header-sub">Paste any job posting and watch a multi-agent AI pipeline extract, score, and evaluate it in real time — writing results directly to a live Notion database.</p>
     <div class="header-badges">
-      <div class="badge"><span class="badge-dot"></span>Notion MCP Integration</div>
+      <div class="badge"><span class="badge-dot"></span>Notion Integration</div>
       <div class="badge"><span class="badge-dot"></span>8-Module Scoring Engine</div>
       <div class="badge"><span class="badge-dot"></span>Company Enrichment</div>
       <div class="badge"><span class="badge-dot"></span>Contact Discovery</div>
@@ -342,7 +342,7 @@
         <div class="pulse-dot"></div>
         Pipeline ready
       </div>
-      <div class="form-header-sub">Notion MCP connected</div>
+      <div class="form-header-sub">Notion connected</div>
     </div>
     <div class="form-body">
       <div class="field-group">
@@ -360,7 +360,7 @@
       <button class="submit-btn" id="submit-btn" onclick="startPipeline()">
         Analyze posting <span class="btn-arrow">→</span>
       </button>
-      <div class="btn-note">Processing takes 60–90 seconds</div>
+      <div class="btn-note">Processing takes 30–60 seconds</div>
     </div>
   </div>
 
@@ -383,7 +383,7 @@
       <div class="pipeline-stage">
         <div class="stage-node">
           <div class="stage-circle waiting" id="stage-2">2</div>
-          <div class="stage-label waiting" id="stage-2-label">Modules 1–5</div>
+          <div class="stage-label waiting" id="stage-2-label">Modules 1-5</div>
         </div>
       </div>
       <div class="stage-connector" id="conn-2"></div>
@@ -423,13 +423,13 @@
       <div class="results-meta" id="results-timestamp"></div>
     </div>
     <div class="score-hero">
-      <div class="score-number" id="score-number">—<span>/100</span></div>
+      <div class="score-number" id="score-number">-<span>/100</span></div>
       <div class="score-details">
         <div class="score-label">Hybrid Match Score</div>
-        <div class="score-title" id="result-title">—</div>
-        <div class="score-subtitle" id="result-company">—</div>
+        <div class="score-title" id="result-title">-</div>
+        <div class="score-subtitle" id="result-company">-</div>
       </div>
-      <div class="fit-badge" id="fit-badge">—</div>
+      <div class="fit-badge" id="fit-badge">-</div>
     </div>
     <div class="meta-row" id="meta-row"></div>
     <div class="module-grid" id="module-grid"></div>
@@ -444,43 +444,51 @@
 </main>
 
 <footer>
-  Built by <a href="https://www.notion.so/d982b19992bb4628813962b9bb59a622">Stephen R. Cherico</a> &nbsp;·&nbsp; Career Intelligence Platform demo &nbsp;·&nbsp; Powered by Claude + Notion MCP &nbsp;·&nbsp; 2026
+  Built by <a href="https://www.notion.so/d982b19992bb4628813962b9bb59a622">Stephen R. Cherico</a> &nbsp;·&nbsp; Career Intelligence Platform demo &nbsp;·&nbsp; Powered by Claude + Notion &nbsp;·&nbsp; 2026
 </footer>
 
 <script>
 function setStage(num, state) {
   var circle = document.getElementById('stage-' + num);
-  var label = document.getElementById('stage-' + num + '-label');
-  var conn = document.getElementById('conn-' + (num - 1));
+  var label  = document.getElementById('stage-' + num + '-label');
+  var conn   = document.getElementById('conn-' + (num - 1));
   if (!circle) return;
   circle.className = 'stage-circle ' + state;
-  label.className = 'stage-label ' + state;
+  label.className  = 'stage-label '  + state;
   if (conn && state === 'done') conn.className = 'stage-connector done';
 }
 
 function updateStatus(title, msg, type) {
-  var card = document.getElementById('status-card');
-  var t = document.getElementById('status-title');
-  var m = document.getElementById('status-msg');
+  var card  = document.getElementById('status-card');
+  var t     = document.getElementById('status-title');
+  var m     = document.getElementById('status-msg');
   card.className = 'status-card status-' + type;
-  t.textContent = title;
-  m.textContent = msg;
-  var icons = { processing: '⏳', success: '✅', error: '❌' };
-  card.querySelector('.status-icon').textContent = icons[type] || '⏳';
+  t.textContent  = title;
+  m.textContent  = msg;
+  var iconMap = { processing: '⏳', success: '✅', error: '❌' };
+  card.querySelector('.status-icon').textContent = iconMap[type] || '⏳';
+}
+
+function completeAllStages() {
+  for (var i = 1; i <= 6; i++) { setStage(i, 'done'); }
+  for (var i = 1; i <= 5; i++) {
+    var c = document.getElementById('conn-' + i);
+    if (c) c.className = 'stage-connector done';
+  }
 }
 
 function getFitClass(fit) {
   if (!fit) return 'fit-moderate';
   var f = fit.toLowerCase();
-  if (f.includes('strong')) return 'fit-strong';
+  if (f.includes('strong'))   return 'fit-strong';
   if (f.includes('moderate')) return 'fit-moderate';
-  if (f.includes('stretch')) return 'fit-stretch';
+  if (f.includes('stretch'))  return 'fit-stretch';
   return 'fit-pass';
 }
 
 async function startPipeline() {
   var postingText = document.getElementById('posting-text').value.trim();
-  var postingUrl = document.getElementById('posting-url').value.trim();
+  var postingUrl  = document.getElementById('posting-url').value.trim();
 
   if (!postingText || postingText.length < 100) {
     alert('Please paste the full job posting text (at least a few paragraphs).');
@@ -495,29 +503,37 @@ async function startPipeline() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> Running pipeline...';
 
-  document.getElementById('status-area').style.display = 'block';
+  document.getElementById('status-area').style.display  = 'block';
   document.getElementById('results-area').style.display = 'none';
-  updateStatus('Pipeline starting...', 'Connecting to Notion MCP and initializing agents.', 'processing');
+  updateStatus('Pipeline starting...', 'Initializing analysis...', 'processing');
 
+  for (var i = 1; i <= 6; i++) { setStage(i, 'waiting'); }
+  for (var i = 1; i <= 5; i++) {
+    var c = document.getElementById('conn-' + i);
+    if (c) c.className = 'stage-connector';
+  }
+
+  var pendingTimers = [];
   var stages = [
-    { delay: 1500,  stage: 1, state: 'active', title: 'Step 1 — Creating job posting record', msg: 'Extracting metadata from posting text...' },
-    { delay: 6000,  stage: 1, state: 'done',   title: 'Metadata extracted', msg: 'Running Modules 1–5: keywords, domain, skills, seniority, industry...' },
-    { delay: 8000,  stage: 2, state: 'active', title: 'Running scoring modules', msg: 'Analyzing keywords, domain signals, and required skills...' },
-    { delay: 20000, stage: 2, state: 'done',   title: 'Modules 1–5 complete', msg: 'Computing Hybrid Score in Fast Intake Mode...' },
-    { delay: 22000, stage: 3, state: 'active', title: 'Computing Hybrid Score', msg: '0.50×Keywords + 0.30×Domain + 0.20×Seniority' },
-    { delay: 27000, stage: 3, state: 'done',   title: 'Hybrid Score computed', msg: 'Writing Job Posting record to Notion...' },
-    { delay: 32000, stage: 4, state: 'active', title: 'Step 2 — Company enrichment', msg: 'Searching for existing company record, enriching profile...' },
-    { delay: 50000, stage: 4, state: 'done',   title: 'Company enriched', msg: 'Running Contacts Lookup via web research...' },
-    { delay: 52000, stage: 5, state: 'active', title: 'Step 3 — Contacts research', msg: 'Searching for recruiter, HR, and hiring manager contacts...' },
-    { delay: 70000, stage: 5, state: 'done',   title: 'Contacts populated', msg: 'Setting Company relation on posting record...' },
-    { delay: 73000, stage: 6, state: 'active', title: 'Step 4 — Back-linking records', msg: 'Connecting posting to company record in Notion...' },
+    { delay:  1000, stage: 1, state: 'active', title: 'Parsing posting...', msg: 'Extracting metadata and sending to Claude for analysis.' },
+    { delay:  4000, stage: 1, state: 'done',   title: 'Posting parsed', msg: 'Running 8 scoring modules: keywords, domain, skills, seniority, industry...' },
+    { delay:  5000, stage: 2, state: 'active', title: 'Scoring modules running', msg: 'Analyzing keywords, domain signals, and required skills...' },
+    { delay: 18000, stage: 2, state: 'done',   title: 'Modules 1-5 complete', msg: 'Computing Hybrid Score...' },
+    { delay: 19000, stage: 3, state: 'active', title: 'Computing Hybrid Score', msg: 'Weighing module scores to produce final fit rating...' },
+    { delay: 23000, stage: 3, state: 'done',   title: 'Hybrid Score computed', msg: 'Looking up company in Notion...' },
+    { delay: 24000, stage: 4, state: 'active', title: 'Company enrichment', msg: 'Searching for existing company record, creating if not found...' },
+    { delay: 35000, stage: 4, state: 'done',   title: 'Company record ready', msg: 'Searching for contacts associated with this role...' },
+    { delay: 36000, stage: 5, state: 'active', title: 'Contacts lookup', msg: 'Searching for recruiter and hiring manager contacts...' },
+    { delay: 44000, stage: 5, state: 'done',   title: 'Contacts step complete', msg: 'Writing all results to Notion and linking company record...' },
+    { delay: 45000, stage: 6, state: 'active', title: 'Writing to Notion', msg: 'Creating job posting record and connecting to company...' },
   ];
 
   stages.forEach(function(s) {
-    setTimeout(function() {
+    var id = setTimeout(function() {
       setStage(s.stage, s.state);
       updateStatus(s.title, s.msg, 'processing');
     }, s.delay);
+    pendingTimers.push(id);
   });
 
   try {
@@ -527,6 +543,8 @@ async function startPipeline() {
       body: JSON.stringify({ postingText: postingText, postingUrl: postingUrl })
     });
 
+    pendingTimers.forEach(function(id) { clearTimeout(id); });
+
     if (!response.ok) {
       var errData = await response.json();
       throw new Error(errData.error || 'Server error ' + response.status);
@@ -535,13 +553,13 @@ async function startPipeline() {
     var result = await response.json();
     if (!result.success) throw new Error('Pipeline reported failure');
 
-    setStage(6, 'done');
-    document.getElementById('conn-5').className = 'stage-connector done';
-    updateStatus('Pipeline complete', 'All 4 steps completed successfully. Results written to Notion.', 'success');
+    completeAllStages();
+    updateStatus('Pipeline complete', 'All steps completed. Results written to Notion.', 'success');
 
-    setTimeout(function() { showResults(result); }, 800);
+    setTimeout(function() { showResults(result); }, 600);
 
   } catch(err) {
+    pendingTimers.forEach(function(id) { clearTimeout(id); });
     updateStatus('Pipeline error', err.message + ' — Please try again.', 'error');
     btn.disabled = false;
     btn.innerHTML = 'Analyze posting <span class="btn-arrow">→</span>';
@@ -552,21 +570,21 @@ function showResults(r) {
   document.getElementById('results-area').style.display = 'block';
   document.getElementById('results-timestamp').textContent = 'Processed ' + new Date().toLocaleTimeString();
   document.getElementById('score-number').innerHTML = Math.round(r.hybridScore || 0) + '<span>/100</span>';
-  document.getElementById('result-title').textContent = r.jobTitle || '—';
-  document.getElementById('result-company').textContent = r.companyName || '—';
+  document.getElementById('result-title').textContent   = r.jobTitle    || '-';
+  document.getElementById('result-company').textContent = r.companyName || '-';
 
   var fitBadge = document.getElementById('fit-badge');
-  fitBadge.textContent = r.fitAssessment || '—';
-  fitBadge.className = 'fit-badge ' + getFitClass(r.fitAssessment);
+  fitBadge.textContent = r.fitAssessment || '-';
+  fitBadge.className   = 'fit-badge ' + getFitClass(r.fitAssessment);
 
   var metaRow = document.getElementById('meta-row');
   var metas = [
-    r.location   && { icon: '📍', text: r.location },
-    r.workModel  && { icon: '💻', text: r.workModel },
-    r.seniority  && { icon: '⭐', text: r.seniority },
-    r.industry   && { icon: '🏢', text: r.industry },
-    (r.salaryMin && r.salaryMax) && { icon: '💰', text: '$' + Math.round(r.salaryMin/1000) + 'k–$' + Math.round(r.salaryMax/1000) + 'k' },
-    r.status     && { icon: '📊', text: r.status },
+    r.location  && { icon: '📍', text: r.location },
+    r.workModel && { icon: '💻', text: r.workModel },
+    r.seniority && { icon: '⭐', text: r.seniority },
+    r.industry  && { icon: '🏢', text: r.industry },
+    (r.salaryMin && r.salaryMax) && { icon: '💰', text: '$' + Math.round(r.salaryMin/1000) + 'k-$' + Math.round(r.salaryMax/1000) + 'k' },
+    r.status    && { icon: '📊', text: r.status },
   ].filter(Boolean);
   metaRow.innerHTML = metas.map(function(m) {
     return '<div class="meta-pill"><span>' + m.icon + '</span>' + m.text + '</div>';
@@ -582,22 +600,25 @@ function showResults(r) {
     { name: 'Hybrid score', val: r.hybridScore },
   ];
   moduleGrid.innerHTML = modules.map(function(m) {
-    return '<div class="module-card"><div class="module-name">' + m.name + '</div><div class="module-score-row"><div class="module-score-val">' + Math.round(m.val || 0) + '</div><div class="score-bar-wrap"><div class="score-bar" style="width:' + Math.round(m.val || 0) + '%"></div></div></div></div>';
+    return '<div class="module-card"><div class="module-name">' + m.name + '</div>' +
+      '<div class="module-score-row"><div class="module-score-val">' + Math.round(m.val || 0) + '</div>' +
+      '<div class="score-bar-wrap"><div class="score-bar" style="width:' + Math.round(m.val || 0) + '%"></div></div></div></div>';
   }).join('');
 
   var detailsGrid = document.getElementById('details-grid');
   var details = [
-    r.fitRationale  && { label: 'Why it fits',             value: r.fitRationale },
-    r.gapsRisks     && { label: 'Gaps &amp; risks',        value: r.gapsRisks },
-    r.keysCleaned   && { label: 'Top keywords extracted',  tags: r.keysCleaned.split(',').map(function(s){return s.trim();}).filter(Boolean) },
-    r.domainSignals && { label: 'Domain signals',          value: r.domainSignals },
-    r.finalNotes    && { label: 'Pipeline notes',          value: r.finalNotes, full: true },
+    r.fitRationale  && { label: 'Why it fits',            value: r.fitRationale },
+    r.gapsRisks     && { label: 'Gaps &amp; risks',       value: r.gapsRisks },
+    r.keysCleaned   && { label: 'Top keywords extracted', tags: r.keysCleaned.split(',').map(function(s){ return s.trim(); }).filter(Boolean) },
+    r.domainSignals && { label: 'Domain signals',         value: r.domainSignals },
+    r.finalNotes    && { label: 'Pipeline notes',         value: r.finalNotes, full: true },
   ].filter(Boolean);
 
   detailsGrid.innerHTML = details.map(function(d) {
-    return '<div class="detail-card' + (d.full ? ' full-width' : '') + '"><div class="detail-card-label">' + d.label + '</div>' +
+    return '<div class="detail-card' + (d.full ? ' full-width' : '') + '">' +
+      '<div class="detail-card-label">' + d.label + '</div>' +
       (d.value ? '<div class="detail-card-value">' + d.value + '</div>' : '') +
-      (d.tags  ? '<div class="detail-tag-list">' + d.tags.slice(0,16).map(function(t){return '<span class="detail-tag">'+t+'</span>';}).join('') + '</div>' : '') +
+      (d.tags  ? '<div class="detail-tag-list">' + d.tags.slice(0,16).map(function(t){ return '<span class="detail-tag">' + t + '</span>'; }).join('') + '</div>' : '') +
       '</div>';
   }).join('');
 
