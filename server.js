@@ -538,6 +538,13 @@ app.post('/api/enrich', async function(req, res) {
     if (!cMatch) throw new Error('No JSON from enrichment call');
     var ed          = JSON.parse(cMatch[0]);
 
+    console.log('Enrichment Claude output for', companyName, ':', JSON.stringify(ed));
+    console.log('Serper used:', !!SERPER_KEY, '| searchContext length:', searchContext.length);
+
+    // Which fields already have values (will be skipped)
+    var alreadyFilled = Object.keys(ep).filter(function(k) { return !propEmpty(ep[k]); });
+    console.log('Already filled fields (will skip):', alreadyFilled.join(', '));
+
     // Step 3: Build update payload — only write to empty fields
     var updates = {};
     if (propEmpty(ep['Website'])                     && ed.website)                  updates['Website']                    = { url: ed.website };
@@ -567,11 +574,18 @@ app.post('/api/enrich', async function(req, res) {
       await notionRequest('PATCH', '/pages/' + companyPageId, { properties: updates }, NOTION_TOKEN);
     }
 
+
     res.json({
-      success:       true,
-      companyName:   companyName,
-      fieldsUpdated: fieldsUpdated,
-      fieldsList:    Object.keys(updates)
+      success:        true,
+      companyName:    companyName,
+      fieldsUpdated:  fieldsUpdated,
+      fieldsList:     Object.keys(updates),
+      debug: {
+        serperUsed:    !!SERPER_KEY,
+        serperChars:   searchContext.length,
+        claudeGot:     ed,
+        alreadyFilled: alreadyFilled
+      }
     });
 
   } catch (err) {
