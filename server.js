@@ -390,19 +390,3 @@ app.get('*', function(req, res) {
 
 var PORT = process.env.PORT || 3000;
 app.listen(PORT, function() { console.log('Career Intelligence Demo running on port ' + PORT); });
-ed,
-      contactsFound: false
-    });
-
-  } catch (err) {
-    console.error('Pipeline error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('*', function(req, res) {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-var PORT = process.env.PORT || 3000;
-app.listen(PORT, function() { console.log('Career Intelligence Demo running on port ' + PORT); });
