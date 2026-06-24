@@ -410,6 +410,26 @@ app.post('/api/analyze', async function(req, res) {
 
 // --- Enrichment endpoint ------------------------------------------------------
 
+// Serper.dev web search helper (returns top 5 snippet strings)
+async function serperSearch(query, apiKey) {
+  try {
+    var r = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: query, num: 5 })
+    });
+    if (!r.ok) return '';
+    var d = await r.json();
+    var snippets = (d.organic || []).map(function(x) {
+      return (x.title || '') + ': ' + (x.snippet || '');
+    });
+    if (d.answerBox && d.answerBox.answer) snippets.unshift('Answer: ' + d.answerBox.answer);
+    return snippets.join('\n');
+  } catch (e) {
+    return '';
+  }
+}
+
 app.post('/api/enrich', async function(req, res) {
   var companyPageId = req.body.companyPageId;
   var companyName   = req.body.companyName;
@@ -439,17 +459,39 @@ app.post('/api/enrich', async function(req, res) {
       return true;
     }
 
-    // Step 2: Claude enrichment call (company name only - no posting text)
+    // Step 2a: Web search (if SERPER_API_KEY is set)
+    var SERPER_KEY = process.env.SERPER_API_KEY || '';
+    var searchContext = '';
+    if (SERPER_KEY) {
+      console.log('Running Serper searches for:', companyName);
+      var [res1, res2, res3] = await Promise.all([
+        serperSearch(companyName + ' headquarters address phone number', SERPER_KEY),
+        serperSearch(companyName + ' HR recruiter hiring manager talent acquisition', SERPER_KEY),
+        serperSearch(companyName + ' company overview industry employees funding', SERPER_KEY)
+      ]);
+      searchContext = [
+        '=== Address / Phone ===', res1,
+        '=== HR / Recruiting Contacts ===', res2,
+        '=== Company Overview ===', res3
+      ].join('\n');
+    }
+
+    // Step 2b: Claude call — structure web search results (or use training knowledge as fallback)
+    var contextSection = searchContext
+      ? 'WEB SEARCH RESULTS:\n' + searchContext + '\n\nUsing the web search results above (prefer them over your training data), '
+      : 'Using your training knowledge, ';
+
     var enrichLines = [
-      "Using your training knowledge, provide factual information about the company \"" + companyName + "\".",
+      contextSection + "extract factual information about \"" + companyName + "\" and return ONLY valid JSON.",
       "",
-      "Return ONLY valid JSON. Use null for any field you are not confident about.",
-      "Do NOT guess or fabricate. If you do not know, return null.",
+      "Return ONLY valid JSON. Use null for any field you cannot find evidence for.",
+      "Do NOT fabricate data. Only include values that appear in the search results or that you are highly confident about.",
+      "For recruiter/HR contacts: pick the single most senior person per role group (Recruiter, HR Contact, Hiring Manager).",
       "",
       "{",
       "  \"website\": \"official website URL or null\",",
-      "  \"headquarters\": \"HQ city and state/country or null\",",
-      "  \"companyAddress\": \"full mailing address or null\",",
+      "  \"headquarters\": \"HQ city and state or null\",",
+      "  \"companyAddress\": \"full street address or null\",",
       "  \"companyPhone\": \"main corporate phone number or null\",",
       "  \"industry\": \"primary industry or null\",",
       "  \"employeeCount\": null,",
@@ -459,14 +501,14 @@ app.post('/api/enrich', async function(req, res) {
       "  \"primaryProduct\": \"main product or platform or null\",",
       "  \"techStack\": \"known tech stack or null\",",
       "  \"companyType\": \"one of: Employer, Vendor, Recruiting Agency, Staffing Firm, Consulting Firm or null\",",
-      "  \"recruiterName\": null,",
-      "  \"recruiterTitle\": null,",
+      "  \"recruiterName\": \"most senior recruiter/talent acquisition contact name or null\",",
+      "  \"recruiterTitle\": \"their title or null\",",
       "  \"recruiterLinkedInUrl\": null,",
-      "  \"hrContactName\": null,",
-      "  \"hrContactTitle\": null,",
+      "  \"hrContactName\": \"HR director or people ops contact name or null\",",
+      "  \"hrContactTitle\": \"their title or null\",",
       "  \"hrLinkedInUrl\": null,",
-      "  \"hiringManagerName\": null,",
-      "  \"hiringManagerTitle\": null,",
+      "  \"hiringManagerName\": \"hiring manager or head of product/ops name or null\",",
+      "  \"hiringManagerTitle\": \"their title or null\",",
       "  \"hiringManagerLinkedInUrl\": null",
       "}",
       "",
