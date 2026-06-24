@@ -292,6 +292,39 @@
     .form-body, .form-footer { padding-left: 20px; padding-right: 20px; }
   }
 
+  /* ── Standalone enrichment section ─────────────────── */
+  .standalone-enrich-wrap {
+    max-width: 860px;
+    margin: 32px auto 0;
+    padding: 0 40px;
+  }
+  .standalone-enrich-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+  }
+  .standalone-enrich-header h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 4px; }
+  .standalone-enrich-header p  { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+  .standalone-enrich-body { display: flex; gap: 10px; align-items: center; }
+  .se-input {
+    flex: 1;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--cream);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .se-input:focus { border-color: var(--navy); background: var(--white); }
+  @media (max-width: 600px) {
+    .standalone-enrich-wrap { padding: 0 20px; }
+    .standalone-enrich-body { flex-direction: column; align-items: stretch; }
+  }
+
   /* ── Enrichment section ─────────────────────────────── */
   #enrich-area {
     margin-top: 24px;
@@ -592,6 +625,49 @@
 
 </main>
 
+<!-- ── Standalone Company Enrichment ─────────────────────────────────────── -->
+<section class="standalone-enrich-wrap">
+  <div class="standalone-enrich-card">
+    <div class="standalone-enrich-header">
+      <div>
+        <h3>Enrich an Existing Company</h3>
+        <p>Already in Notion but missing contacts or profile data? Type the company name and run enrichment anytime.</p>
+      </div>
+    </div>
+    <div class="standalone-enrich-body">
+      <input type="text" id="se-company-input" class="se-input"
+             placeholder="e.g. Maven Clinic, Workday, Rippling…"
+             onkeydown="if(event.key==='Enter') startManualEnrichment()" />
+      <button class="enrich-btn" id="se-btn" onclick="startManualEnrichment()">
+        Find &amp; Enrich &#8594;
+      </button>
+    </div>
+    <div class="enrich-pipeline-wrap" id="se-pipeline" style="display:none">
+      <div class="enrich-stages">
+        <div class="enrich-stage-node">
+          <div class="enrich-stage-circle waiting" id="se-s1">1</div>
+          <div class="enrich-stage-label">Find in Notion</div>
+        </div>
+        <div class="enrich-conn" id="se-c1"></div>
+        <div class="enrich-stage-node">
+          <div class="enrich-stage-circle waiting" id="se-s2">2</div>
+          <div class="enrich-stage-label">Web + Claude</div>
+        </div>
+        <div class="enrich-conn" id="se-c2"></div>
+        <div class="enrich-stage-node">
+          <div class="enrich-stage-circle waiting" id="se-s3">3</div>
+          <div class="enrich-stage-label">Write to Notion</div>
+        </div>
+      </div>
+      <div class="enrich-status-row" id="se-status">Starting…</div>
+    </div>
+    <div class="enrich-results-wrap" id="se-results" style="display:none">
+      <div class="enrich-result-title">Fields enriched</div>
+      <div id="se-field-list"></div>
+    </div>
+  </div>
+</section>
+
 <footer>
   Built by <a href="https://www.notion.so/d982b19992bb4628813962b9bb59a622">Stephen R. Cherico</a> &nbsp;·&nbsp; Career Intelligence Platform demo &nbsp;·&nbsp; Powered by Claude + Notion &nbsp;·&nbsp; 2026
 </footer>
@@ -809,25 +885,23 @@ function setEnrichStage(num, state) {
 }
 
 async function startEnrichment() {
-  if (!_enrichCompanyPageId) { alert('No company record found. Run the main pipeline first.'); return; }
-
-  var btn = document.getElementById('enrich-btn');
-  btn.disabled = true;
-  btn.textContent = 'Enriching...';
-
+  var btn      = document.getElementById('enrich-btn');
   var pipeline = document.getElementById('enrich-pipeline');
   var results  = document.getElementById('enrich-results');
+
+  btn.disabled = true;
+  btn.textContent = 'Working...';
   pipeline.style.display = 'block';
   results.style.display  = 'none';
 
-  // Reset stages
   for (var i = 1; i <= 3; i++) setEnrichStage(i, 'waiting');
-  document.getElementById('ec-1').className = 'enrich-conn';
-  document.getElementById('ec-2').className = 'enrich-conn';
+  ['ec-1','ec-2'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.className = 'enrich-conn';
+  });
 
   function setMsg(msg) { document.getElementById('enrich-status-msg').textContent = msg; }
 
-  // Cosmetic timers
   var t1 = setTimeout(function() { setEnrichStage(1, 'active'); setMsg('Reading existing company record from Notion...'); }, 300);
   var t2 = setTimeout(function() { setEnrichStage(1, 'done');  setEnrichStage(2, 'active'); setMsg('Asking Claude about ' + _enrichCompanyName + '...'); }, 1800);
   var t3 = setTimeout(function() { setEnrichStage(2, 'done');  setEnrichStage(3, 'active'); setMsg('Writing enriched fields to Notion...'); }, 4500);
@@ -848,31 +922,28 @@ async function startEnrichment() {
 
     var result = await response.json();
 
-    // Complete all enrich stages
     for (var i = 1; i <= 3; i++) setEnrichStage(i, 'done');
     document.getElementById('ec-1').className = 'enrich-conn done';
     document.getElementById('ec-2').className = 'enrich-conn done';
 
-    var count = result.fieldsUpdated || 0;
-    var fields = result.fieldsList   || [];
-
+    var count  = result.fieldsUpdated || 0;
+    var fields = result.fieldsList    || [];
     setMsg('Complete — ' + count + ' field' + (count !== 1 ? 's' : '') + ' enriched.');
 
-    // Show results
     results.style.display = 'block';
     var listEl = document.getElementById('enrich-field-list');
     if (count === 0) {
       var dbg = result.debug || {};
       var dbgLines = [];
-      dbgLines.push('Serper web search used: ' + (dbg.serperUsed ? 'YES (' + dbg.serperChars + ' chars)' : 'NO — fallback to Claude training'));
+      dbgLines.push('Serper web search used: ' + (dbg.serperUsed ? 'YES (' + dbg.serperChars + ' chars)' : 'NO'));
       if (dbg.claudeGot) {
         var nonNull = Object.entries(dbg.claudeGot).filter(function(e){ return e[1] !== null && e[1] !== ''; });
         dbgLines.push('Claude returned ' + nonNull.length + ' non-null fields: ' + nonNull.map(function(e){ return e[0]; }).join(', '));
         var allNull = Object.entries(dbg.claudeGot).filter(function(e){ return e[1] === null; });
-        if (allNull.length) dbgLines.push('Null fields (' + allNull.length + '): ' + allNull.map(function(e){ return e[0]; }).join(', '));
+        if (allNull.length) dbgLines.push('Null fields: ' + allNull.map(function(e){ return e[0]; }).join(', '));
       }
       if (dbg.alreadyFilled && dbg.alreadyFilled.length) {
-        dbgLines.push('Already filled in Notion (skipped): ' + dbg.alreadyFilled.join(', '));
+        dbgLines.push('Already filled (skipped): ' + dbg.alreadyFilled.join(', '));
       }
       listEl.innerHTML = '<div class="enrich-none-msg" style="text-align:left;font-size:12px;line-height:1.7">'
         + '<strong>0 fields updated.</strong><br>' + dbgLines.join('<br>') + '</div>';
@@ -883,13 +954,117 @@ async function startEnrichment() {
     }
 
     btn.disabled = false;
-    btn.textContent = 'Re-run Enrichment →';
+    btn.textContent = 'Re-run Enrichment \u2192';
 
   } catch(err) {
     clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
     setMsg('Error: ' + err.message);
     btn.disabled = false;
-    btn.textContent = 'Retry Enrichment →';
+    btn.textContent = 'Retry Enrichment \u2192';
+  }
+}
+
+// ── Standalone company enrichment (always-visible card) ──────────────────────
+async function startManualEnrichment() {
+  var companyName = (document.getElementById('se-company-input').value || '').trim();
+  if (!companyName) {
+    document.getElementById('se-status').textContent = 'Please enter a company name.';
+    document.getElementById('se-pipeline').style.display = 'block';
+    return;
+  }
+
+  var btn      = document.getElementById('se-btn');
+  var pipeline = document.getElementById('se-pipeline');
+  var results  = document.getElementById('se-results');
+  var listEl   = document.getElementById('se-field-list');
+
+  btn.disabled = true;
+  btn.textContent = 'Working...';
+  pipeline.style.display = 'block';
+  results.style.display  = 'none';
+
+  for (var i = 1; i <= 3; i++) {
+    var c = document.getElementById('se-s' + i);
+    if (c) c.className = 'enrich-stage-circle waiting';
+  }
+  ['se-c1','se-c2'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.className = 'enrich-conn';
+  });
+
+  function seStage(num, state) {
+    var circle = document.getElementById('se-s' + num);
+    var conn   = document.getElementById('se-c' + num);
+    if (circle) circle.className = 'enrich-stage-circle ' + state;
+    if (conn && state === 'done') conn.className = 'enrich-conn done';
+  }
+  function seMsg(msg) { document.getElementById('se-status').textContent = msg; }
+
+  var t1 = setTimeout(function() { seStage(1, 'active'); seMsg('Looking up ' + companyName + ' in Notion...'); }, 200);
+  var t2 = setTimeout(function() { seStage(1, 'done');  seStage(2, 'active'); seMsg('Running web search + Claude lookup...'); }, 1500);
+  var t3 = setTimeout(function() { seStage(2, 'done');  seStage(3, 'active'); seMsg('Writing enriched fields to Notion...'); }, 5000);
+
+  try {
+    var response = await fetch('/api/enrich', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyName: companyName })
+    });
+
+    clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+
+    if (response.status === 404) {
+      var errData = await response.json();
+      seMsg('Not found: ' + errData.error);
+      seStage(1, 'active');
+      btn.disabled = false;
+      btn.textContent = 'Find & Enrich \u2192';
+      return;
+    }
+
+    if (!response.ok) {
+      var errData2 = await response.json();
+      throw new Error(errData2.error || 'Error ' + response.status);
+    }
+
+    var result = await response.json();
+    for (var j = 1; j <= 3; j++) seStage(j, 'done');
+    document.getElementById('se-c1').className = 'enrich-conn done';
+    document.getElementById('se-c2').className = 'enrich-conn done';
+
+    var count  = result.fieldsUpdated || 0;
+    var fields = result.fieldsList    || [];
+    seMsg('Complete — ' + count + ' field' + (count !== 1 ? 's' : '') + ' enriched for ' + companyName + '.');
+    results.style.display = 'block';
+
+    if (count === 0) {
+      var dbg = result.debug || {};
+      var dbgLines = [];
+      dbgLines.push('Serper: ' + (dbg.serperUsed ? 'YES (' + dbg.serperChars + ' chars)' : 'NO'));
+      if (dbg.claudeGot) {
+        var nonNull = Object.entries(dbg.claudeGot).filter(function(e) { return e[1] !== null && e[1] !== ''; });
+        dbgLines.push('Claude found ' + nonNull.length + ' fields: ' + nonNull.map(function(e) { return e[0]; }).join(', '));
+      }
+      if (dbg.alreadyFilled && dbg.alreadyFilled.length) {
+        dbgLines.push('Already filled: ' + dbg.alreadyFilled.join(', '));
+      }
+      listEl.innerHTML = '<div class="enrich-none-msg" style="text-align:left;font-size:12px;line-height:1.8">'
+        + '<strong>0 fields updated.</strong><br>' + dbgLines.join('<br>') + '</div>';
+    } else {
+      listEl.innerHTML = fields.map(function(f) {
+        return '<span class="enrich-field-tag">' + f + '</span>';
+      }).join('');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Enrich Another \u2192';
+    document.getElementById('se-company-input').value = '';
+
+  } catch(err) {
+    clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+    seMsg('Error: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = 'Retry \u2192';
   }
 }
 </script>
