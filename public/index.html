@@ -291,6 +291,117 @@
     .score-hero { grid-template-columns: 1fr; gap: 12px; }
     .form-body, .form-footer { padding-left: 20px; padding-right: 20px; }
   }
+
+  /* ── Enrichment section ─────────────────────────────── */
+  #enrich-area {
+    margin-top: 24px;
+  }
+  .enrich-card {
+    background: var(--white);
+    border: 1px solid var(--border-gold);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+  }
+  .enrich-header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .enrich-header-text h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+  .enrich-header-text p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+  }
+  .enrich-btn {
+    background: var(--gold);
+    color: var(--navy);
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .enrich-btn:hover { background: var(--gold-light); }
+  .enrich-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .enrich-pipeline-wrap {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .enrich-stages {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 14px;
+  }
+  .enrich-stage-node { text-align: center; }
+  .enrich-stage-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    margin: 0 auto 6px;
+    transition: all 0.3s;
+  }
+  .enrich-stage-circle.waiting  { background: #f0f0f0; color: #aaa; border: 2px solid #ddd; }
+  .enrich-stage-circle.active   { background: var(--navy); color: white; border: 2px solid var(--navy); animation: ring-pulse 1.2s infinite; }
+  .enrich-stage-circle.done     { background: var(--success); color: white; border: 2px solid var(--success); }
+  .enrich-stage-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .enrich-stage-label.done { color: var(--success); }
+  .enrich-conn {
+    flex: 1; height: 2px; background: #e5e7eb; margin: 0 4px; margin-bottom: 20px;
+    transition: background 0.3s;
+  }
+  .enrich-conn.done { background: var(--success); }
+  .enrich-status-row {
+    font-size: 13px;
+    color: var(--text-secondary);
+    min-height: 20px;
+  }
+  .enrich-results-wrap {
+    padding: 20px 28px;
+  }
+  .enrich-result-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .enrich-field-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .enrich-field-tag {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid rgba(26,122,74,0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .enrich-none-msg {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
@@ -441,6 +552,44 @@
       <a class="notion-btn" href="https://www.notion.so/35b1850c4a7c801792e1f2a5971785ea" target="_blank">View in Notion →</a>
     </div>
   </div>
+
+  <div id="enrich-area" style="display:none">
+    <div class="enrich-card">
+      <div class="enrich-header">
+        <div class="enrich-header-text">
+          <h3>Company &amp; Contacts Enrichment</h3>
+          <p>Use Claude to fill in company profile, LinkedIn, Glassdoor, and contact fields</p>
+        </div>
+        <button class="enrich-btn" id="enrich-btn" onclick="startEnrichment()">
+          Enrich Now &#8594;
+        </button>
+      </div>
+      <div class="enrich-pipeline-wrap" id="enrich-pipeline" style="display:none">
+        <div class="enrich-stages">
+          <div class="enrich-stage-node">
+            <div class="enrich-stage-circle waiting" id="es-1">1</div>
+            <div class="enrich-stage-label" id="es-1-label">Read record</div>
+          </div>
+          <div class="enrich-conn" id="ec-1"></div>
+          <div class="enrich-stage-node">
+            <div class="enrich-stage-circle waiting" id="es-2">2</div>
+            <div class="enrich-stage-label" id="es-2-label">Claude lookup</div>
+          </div>
+          <div class="enrich-conn" id="ec-2"></div>
+          <div class="enrich-stage-node">
+            <div class="enrich-stage-circle waiting" id="es-3">3</div>
+            <div class="enrich-stage-label" id="es-3-label">Write to Notion</div>
+          </div>
+        </div>
+        <div class="enrich-status-row" id="enrich-status-msg">Starting...</div>
+      </div>
+      <div class="enrich-results-wrap" id="enrich-results" style="display:none">
+        <div class="enrich-result-title">Fields enriched</div>
+        <div id="enrich-field-list"></div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <footer>
@@ -448,6 +597,9 @@
 </footer>
 
 <script>
+var _enrichCompanyPageId = null;
+var _enrichCompanyName   = null;
+
 function setStage(num, state) {
   var circle = document.getElementById('stage-' + num);
   var label  = document.getElementById('stage-' + num + '-label');
@@ -505,6 +657,7 @@ async function startPipeline() {
 
   document.getElementById('status-area').style.display  = 'block';
   document.getElementById('results-area').style.display = 'none';
+  document.getElementById('enrich-area').style.display  = 'none';
   updateStatus('Pipeline starting...', 'Initializing analysis...', 'processing');
 
   for (var i = 1; i <= 6; i++) { setStage(i, 'waiting'); }
@@ -518,12 +671,12 @@ async function startPipeline() {
     { delay:  1000, stage: 1, state: 'active', title: 'Parsing posting...', msg: 'Extracting metadata and sending to Claude for analysis.' },
     { delay:  4000, stage: 1, state: 'done',   title: 'Posting parsed', msg: 'Running 8 scoring modules: keywords, domain, skills, seniority, industry...' },
     { delay:  5000, stage: 2, state: 'active', title: 'Scoring modules running', msg: 'Analyzing keywords, domain signals, and required skills...' },
-    { delay: 18000, stage: 2, state: 'done',   title: 'Modules 1-5 complete', msg: 'Computing Hybrid Score...' },
+    { delay: 18000, stage: 2, state: 'done',   title: 'Modules 1-5 complete', msg: 'Computing Hybrid Score (0.50 x Keywords + 0.30 x Domain + 0.20 x Seniority)...' },
     { delay: 19000, stage: 3, state: 'active', title: 'Computing Hybrid Score', msg: 'Weighing module scores to produce final fit rating...' },
-    { delay: 23000, stage: 3, state: 'done',   title: 'Hybrid Score computed', msg: 'Looking up company in Notion...' },
-    { delay: 24000, stage: 4, state: 'active', title: 'Company enrichment', msg: 'Searching for existing company record, creating if not found...' },
-    { delay: 35000, stage: 4, state: 'done',   title: 'Company record ready', msg: 'Searching for contacts associated with this role...' },
-    { delay: 36000, stage: 5, state: 'active', title: 'Contacts lookup', msg: 'Searching for recruiter and hiring manager contacts...' },
+    { delay: 23000, stage: 3, state: 'done',   title: 'Hybrid Score computed', msg: 'Looking up company in Notion, creating record if new...' },
+    { delay: 24000, stage: 4, state: 'active', title: 'Company lookup', msg: 'Searching for existing company record, creating if not found...' },
+    { delay: 35000, stage: 4, state: 'done',   title: 'Company record ready', msg: 'Preparing contact fields...' },
+    { delay: 36000, stage: 5, state: 'active', title: 'Contacts step', msg: 'Contact enrichment available after write-back via Enrich button.' },
     { delay: 44000, stage: 5, state: 'done',   title: 'Contacts step complete', msg: 'Writing all results to Notion and linking company record...' },
     { delay: 45000, stage: 6, state: 'active', title: 'Writing to Notion', msg: 'Creating job posting record and connecting to company...' },
   ];
@@ -567,6 +720,19 @@ async function startPipeline() {
 }
 
 function showResults(r) {
+  _enrichCompanyPageId = r.companyPageId || null;
+  _enrichCompanyName   = r.companyName   || '';
+
+  var enrichArea = document.getElementById('enrich-area');
+  if (_enrichCompanyPageId) {
+    enrichArea.style.display = 'block';
+    document.getElementById('enrich-pipeline').style.display = 'none';
+    document.getElementById('enrich-results').style.display  = 'none';
+    var eb = document.getElementById('enrich-btn');
+    eb.disabled = false;
+    eb.textContent = 'Enrich Now →';
+  }
+
   document.getElementById('results-area').style.display = 'block';
   document.getElementById('results-timestamp').textContent = 'Processed ' + new Date().toLocaleTimeString();
   document.getElementById('score-number').innerHTML = Math.round(r.hybridScore || 0) + '<span>/100</span>';
@@ -626,6 +792,84 @@ function showResults(r) {
   var btn = document.getElementById('submit-btn');
   btn.disabled = false;
   btn.innerHTML = 'Analyze another posting <span class="btn-arrow">→</span>';
+}
+
+function setEnrichStage(num, state) {
+  var circle = document.getElementById('es-' + num);
+  var label  = document.getElementById('es-' + num + '-label');
+  var conn   = document.getElementById('ec-' + num);
+  if (!circle) return;
+  circle.className = 'enrich-stage-circle ' + state;
+  if (state === 'done') label.className = 'enrich-stage-label done';
+  if (conn && state === 'done') conn.className = 'enrich-conn done';
+}
+
+async function startEnrichment() {
+  if (!_enrichCompanyPageId) { alert('No company record found. Run the main pipeline first.'); return; }
+
+  var btn = document.getElementById('enrich-btn');
+  btn.disabled = true;
+  btn.textContent = 'Enriching...';
+
+  var pipeline = document.getElementById('enrich-pipeline');
+  var results  = document.getElementById('enrich-results');
+  pipeline.style.display = 'block';
+  results.style.display  = 'none';
+
+  for (var i = 1; i <= 3; i++) setEnrichStage(i, 'waiting');
+  document.getElementById('ec-1').className = 'enrich-conn';
+  document.getElementById('ec-2').className = 'enrich-conn';
+
+  function setMsg(msg) { document.getElementById('enrich-status-msg').textContent = msg; }
+
+  var t1 = setTimeout(function() { setEnrichStage(1, 'active'); setMsg('Reading existing company record from Notion...'); }, 300);
+  var t2 = setTimeout(function() { setEnrichStage(1, 'done'); setEnrichStage(2, 'active'); setMsg('Asking Claude about ' + _enrichCompanyName + '...'); }, 1800);
+  var t3 = setTimeout(function() { setEnrichStage(2, 'done'); setEnrichStage(3, 'active'); setMsg('Writing enriched fields to Notion...'); }, 4500);
+
+  try {
+    var response = await fetch('/api/enrich', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyPageId: _enrichCompanyPageId, companyName: _enrichCompanyName })
+    });
+
+    clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+
+    if (!response.ok) {
+      var errData = await response.json();
+      throw new Error(errData.error || 'Enrichment error ' + response.status);
+    }
+
+    var result = await response.json();
+
+    for (var i = 1; i <= 3; i++) setEnrichStage(i, 'done');
+    document.getElementById('ec-1').className = 'enrich-conn done';
+    document.getElementById('ec-2').className = 'enrich-conn done';
+
+    var count  = result.fieldsUpdated || 0;
+    var fields = result.fieldsList    || [];
+
+    setMsg('Complete — ' + count + ' field' + (count !== 1 ? 's' : '') + ' enriched.');
+
+    results.style.display = 'block';
+    var listEl = document.getElementById('enrich-field-list');
+    if (count === 0) {
+      listEl.innerHTML = '<div class="enrich-none-msg">All fields were already populated — nothing to update.</div>';
+    } else {
+      listEl.innerHTML = fields.map(function(f) {
+        return '<span class="enrich-field-tag">' + f + '</span>';
+      }).join('');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Re-run Enrichment →';
+
+  } catch(err) {
+    clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+    setMsg('Error: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = 'Retry Enrichment →';
+  }
 }
 </script>
 </body>
