@@ -1,638 +1,396 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Job Posting Analyzer — Stephen R. Cherico</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --navy: #0f1e35;
-    --navy-mid: #1a2f4a;
-    --navy-light: #243d5e;
-    --gold: #c8a84b;
-    --gold-light: #e2c97e;
-    --gold-dim: #8a7035;
-    --cream: #f7f3ec;
-    --cream-dark: #ede7db;
-    --white: #ffffff;
-    --text-primary: #0f1e35;
-    --text-secondary: #4a5568;
-    --text-muted: #718096;
-    --border: rgba(15,30,53,0.12);
-    --border-gold: rgba(200,168,75,0.4);
-    --success: #1a7a4a;
-    --success-bg: #edf7f1;
-    --error: #b91c1c;
-    --error-bg: #fef2f2;
-    --shadow-sm: 0 1px 3px rgba(15,30,53,0.08);
-    --shadow-md: 0 4px 16px rgba(15,30,53,0.1);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--cream);
-    color: var(--text-primary);
-    min-height: 100vh;
-    font-size: 15px;
-    line-height: 1.6;
-  }
-  header {
-    background: var(--navy);
-    padding: 0;
-    position: relative;
-    overflow: hidden;
-  }
-  header::before {
-    content: '';
-    position: absolute;
-    top: -60px; right: -60px;
-    width: 320px; height: 320px;
-    border: 1px solid rgba(200,168,75,0.15);
-    border-radius: 50%;
-  }
-  header::after {
-    content: '';
-    position: absolute;
-    bottom: -80px; left: -40px;
-    width: 240px; height: 240px;
-    border: 1px solid rgba(200,168,75,0.1);
-    border-radius: 50%;
-  }
-  .header-inner {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 48px 40px 40px;
-    position: relative;
-    z-index: 1;
-  }
-  .header-eyebrow {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .header-eyebrow::before {
-    content: '';
-    display: block;
-    width: 28px; height: 1px;
-    background: var(--gold-dim);
-  }
-  h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: clamp(28px, 4vw, 42px);
-    font-weight: 400;
-    color: var(--white);
-    line-height: 1.15;
-    margin-bottom: 14px;
-  }
-  h1 em { font-style: italic; color: var(--gold-light); }
-  .header-sub {
-    font-size: 15px;
-    color: rgba(255,255,255,0.55);
-    font-weight: 300;
-    max-width: 560px;
-    line-height: 1.65;
-  }
-  .header-badges {
-    display: flex;
-    gap: 8px;
-    margin-top: 24px;
-    flex-wrap: wrap;
-  }
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    padding: 4px 10px;
-    border-radius: 20px;
-    border: 1px solid rgba(200,168,75,0.3);
-    color: rgba(255,255,255,0.65);
-    background: rgba(200,168,75,0.08);
-  }
-  .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
-  main { max-width: 900px; margin: 0 auto; padding: 40px 40px 80px; }
-  .how-it-works {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 28px 32px;
-    margin-bottom: 32px;
-    box-shadow: var(--shadow-sm);
-  }
-  .section-label {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--gold-dim);
-    margin-bottom: 16px;
-  }
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
-  .step { display: flex; flex-direction: column; gap: 6px; }
-  .step-num { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--cream-dark); line-height: 1; }
-  .step-title { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-  .step-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-  .form-card {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-    margin-bottom: 32px;
-  }
-  .form-header {
-    background: var(--navy);
-    padding: 20px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .form-header-title { font-size: 13px; font-weight: 500; color: var(--white); display: flex; align-items: center; gap: 8px; }
-  .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-  .form-header-sub { font-size: 11px; color: rgba(255,255,255,0.4); }
-  .form-body { padding: 28px 32px; }
-  .field-group { margin-bottom: 20px; }
-  label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 7px; }
-  label .required { color: var(--gold-dim); margin-left: 2px; }
-  textarea, input[type="url"] {
-    width: 100%;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    color: var(--text-primary);
-    background: var(--cream);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 14px;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    outline: none;
-    resize: vertical;
-  }
-  textarea:focus, input:focus {
-    border-color: var(--navy-light);
-    box-shadow: 0 0 0 3px rgba(15,30,53,0.06);
-    background: var(--white);
-  }
-  textarea { min-height: 160px; line-height: 1.6; }
-  .field-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
-  .form-footer { padding: 0 32px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-  .submit-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--navy);
-    color: var(--white);
-    border: none;
-    border-radius: 8px;
-    padding: 13px 28px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
-  }
-  .submit-btn:hover { background: var(--navy-light); }
-  .submit-btn:active { transform: scale(0.98); }
-  .submit-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
-  .btn-arrow { font-size: 16px; transition: transform 0.2s; }
-  .submit-btn:hover .btn-arrow { transform: translateX(3px); }
-  .btn-note { font-size: 12px; color: var(--text-muted); font-style: italic; }
-  #status-area { display: none; }
-  .status-card { border-radius: 10px; padding: 18px 22px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 14px; }
-  .status-processing { background: #eff6ff; border: 1px solid #bfdbfe; }
-  .status-success { background: var(--success-bg); border: 1px solid #a7f3d0; }
-  .status-error { background: var(--error-bg); border: 1px solid #fecaca; }
-  .status-icon { font-size: 20px; margin-top: 1px; flex-shrink: 0; }
-  .status-content { flex: 1; }
-  .status-title { font-weight: 500; font-size: 14px; margin-bottom: 3px; }
-  .status-processing .status-title { color: #1e40af; }
-  .status-success .status-title { color: var(--success); }
-  .status-error .status-title { color: var(--error); }
-  .status-msg { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
-  .pipeline-track { display: flex; align-items: center; margin-bottom: 32px; overflow-x: auto; padding-bottom: 4px; }
-  .pipeline-stage { display: flex; align-items: center; flex: 1; min-width: 0; }
-  .stage-node { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
-  .stage-circle {
-    width: 36px; height: 36px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 500;
-    border: 2px solid var(--border);
-    background: var(--cream); color: var(--text-muted);
-    transition: all 0.3s; flex-shrink: 0;
-  }
-  .stage-circle.active { border-color: #3b82f6; background: #eff6ff; color: #1e40af; animation: ring-pulse 1.5s infinite; }
-  .stage-circle.done { border-color: var(--success); background: var(--success-bg); color: var(--success); }
-  @keyframes ring-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); } 50% { box-shadow: 0 0 0 5px rgba(59,130,246,0); } }
-  .stage-label { font-size: 10px; font-weight: 500; color: var(--text-muted); text-align: center; white-space: nowrap; }
-  .stage-label.active { color: #1e40af; }
-  .stage-label.done { color: var(--success); }
-  .stage-connector { height: 2px; background: var(--border); flex: 1; margin-bottom: 22px; transition: background 0.3s; min-width: 16px; }
-  .stage-connector.done { background: var(--success); }
-  #results-area { display: none; }
-  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-  .results-title { font-family: 'DM Serif Display', serif; font-size: 22px; font-weight: 400; }
-  .results-meta { font-size: 12px; color: var(--text-muted); }
-  .score-hero {
-    background: var(--navy); border-radius: 12px; padding: 28px 32px; margin-bottom: 24px;
-    display: grid; grid-template-columns: auto 1fr auto; gap: 28px; align-items: center;
-    position: relative; overflow: hidden;
-  }
-  .score-hero::before { content: ''; position: absolute; right: -30px; top: -30px; width: 180px; height: 180px; border: 1px solid rgba(200,168,75,0.15); border-radius: 50%; }
-  .score-number { font-family: 'DM Serif Display', serif; font-size: 64px; font-weight: 400; line-height: 1; color: var(--gold-light); }
-  .score-number span { font-size: 22px; color: var(--gold-dim); }
-  .score-details { position: relative; z-index: 1; }
-  .score-label { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
-  .score-title { font-size: 20px; font-weight: 500; color: var(--white); margin-bottom: 4px; }
-  .score-subtitle { font-size: 13px; color: rgba(255,255,255,0.5); }
-  .fit-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 24px; font-size: 12px; font-weight: 500; position: relative; z-index: 1; }
-  .fit-strong { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
-  .fit-moderate { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
-  .fit-stretch { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
-  .fit-pass { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-  .module-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .module-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow-sm); }
-  .module-name { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
-  .module-score-row { display: flex; align-items: center; gap: 10px; }
-  .module-score-val { font-size: 22px; font-weight: 500; color: var(--text-primary); min-width: 36px; }
-  .score-bar-wrap { flex: 1; height: 4px; background: var(--cream-dark); border-radius: 2px; overflow: hidden; }
-  .score-bar { height: 100%; border-radius: 2px; background: var(--navy); transition: width 0.8s ease; width: 0; }
-  .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-  .detail-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; box-shadow: var(--shadow-sm); }
-  .detail-card.full-width { grid-column: 1 / -1; }
-  .detail-card-label { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 10px; }
-  .detail-card-value { font-size: 13px; color: var(--text-secondary); line-height: 1.65; }
-  .detail-tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .detail-tag { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 4px; background: var(--cream); color: var(--text-secondary); border: 1px solid var(--border); }
-  .meta-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-  .meta-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 5px 12px; border-radius: 20px; background: var(--cream); color: var(--text-secondary); border: 1px solid var(--border); }
-  .notion-link-row { background: var(--cream); border: 1px solid var(--border-gold); border-radius: 10px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px; }
-  .notion-link-text { font-size: 13px; color: var(--text-secondary); }
-  .notion-link-text strong { color: var(--text-primary); font-weight: 500; }
-  .notion-btn { display: inline-flex; align-items: center; gap: 6px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); background: var(--white); color: var(--text-primary); text-decoration: none; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
-  .notion-btn:hover { background: var(--cream); }
-  footer { text-align: center; padding: 32px 40px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border); }
-  footer a { color: var(--navy); text-decoration: none; }
-  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @media (max-width: 600px) {
-    .header-inner, main { padding-left: 20px; padding-right: 20px; }
-    .details-grid { grid-template-columns: 1fr; }
-    .score-hero { grid-template-columns: 1fr; gap: 12px; }
-    .form-body, .form-footer { padding-left: 20px; padding-right: 20px; }
-  }
-</style>
-</head>
-<body>
+const express = require('express');
+const fetch = require('node-fetch');
+const cors = require('cors');
+const path = require('path');
 
-<header>
-  <div class="header-inner">
-    <div class="header-eyebrow">Live Portfolio Demo</div>
-    <h1>Job Posting <em>Analyzer</em></h1>
-    <p class="header-sub">Paste any job posting and watch a multi-agent AI pipeline extract, score, and evaluate it in real time — writing results directly to a live Notion database.</p>
-    <div class="header-badges">
-      <div class="badge"><span class="badge-dot"></span>Notion Integration</div>
-      <div class="badge"><span class="badge-dot"></span>8-Module Scoring Engine</div>
-      <div class="badge"><span class="badge-dot"></span>Company Enrichment</div>
-      <div class="badge"><span class="badge-dot"></span>Contact Discovery</div>
-    </div>
-  </div>
-</header>
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '50kb' }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-<main>
-  <div class="how-it-works">
-    <div class="section-label">How it works</div>
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">01</div>
-        <div class="step-title">Paste &amp; submit</div>
-        <div class="step-desc">Drop any job posting text and URL into the form below.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">02</div>
-        <div class="step-title">AI pipeline runs</div>
-        <div class="step-desc">8 scoring modules extract metadata, keywords, skills, and fit signals.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">03</div>
-        <div class="step-title">Company enriched</div>
-        <div class="step-desc">Company record created and enriched with contacts via web research.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">04</div>
-        <div class="step-title">Results in Notion</div>
-        <div class="step-desc">All output written live to the Notion database visible below.</div>
-      </div>
-    </div>
-  </div>
+const JOBS_DB      = '403582a0e82b4e349c300a084f332ad1';
+const COMPANIES_DB = 'b3e93effd284415280a842c6ef5ffc92';
+const NOTION_API   = 'https://api.notion.com/v1';
 
-  <div class="form-card">
-    <div class="form-header">
-      <div class="form-header-title">
-        <div class="pulse-dot"></div>
-        Pipeline ready
-      </div>
-      <div class="form-header-sub">Notion connected</div>
-    </div>
-    <div class="form-body">
-      <div class="field-group">
-        <label for="posting-text">Job posting text <span class="required">*</span></label>
-        <textarea id="posting-text" placeholder="Paste the full job description here — including responsibilities, requirements, and company description..."></textarea>
-        <div class="field-hint">Include the full posting for best results. Longer text = more accurate scoring.</div>
-      </div>
-      <div class="field-group">
-        <label for="posting-url">Job posting URL <span class="required">*</span></label>
-        <input type="url" id="posting-url" placeholder="https://www.linkedin.com/jobs/view/..." />
-        <div class="field-hint">Direct link to the original posting. Used for source tracking.</div>
-      </div>
-    </div>
-    <div class="form-footer">
-      <button class="submit-btn" id="submit-btn" onclick="startPipeline()">
-        Analyze posting <span class="btn-arrow">→</span>
-      </button>
-      <div class="btn-note">Processing takes 30–60 seconds</div>
-    </div>
-  </div>
+// Build em dash from char code so source file stays pure ASCII.
+// String.fromCharCode(8212) === U+2014 === the em dash Notion uses in field names.
+var EM = String.fromCharCode(8212);
 
-  <div id="status-area">
-    <div class="status-card status-processing" id="status-card">
-      <div class="status-icon">⏳</div>
-      <div class="status-content">
-        <div class="status-title" id="status-title">Starting pipeline...</div>
-        <div class="status-msg" id="status-msg">Connecting to Notion and initializing agents.</div>
-      </div>
-    </div>
-    <div class="pipeline-track">
-      <div class="pipeline-stage">
-        <div class="stage-node">
-          <div class="stage-circle waiting" id="stage-1">1</div>
-          <div class="stage-label waiting" id="stage-1-label">Intake</div>
-        </div>
-      </div>
-      <div class="stage-connector" id="conn-1"></div>
-      <div class="pipeline-stage">
-        <div class="stage-node">
-          <div class="stage-circle waiting" id="stage-2">2</div>
-          <div class="stage-label waiting" id="stage-2-label">Modules 1-5</div>
-        </div>
-      </div>
-      <div class="stage-connector" id="conn-2"></div>
-      <div class="pipeline-stage">
-        <div class="stage-node">
-          <div class="stage-circle waiting" id="stage-3">3</div>
-          <div class="stage-label waiting" id="stage-3-label">Hybrid Score</div>
-        </div>
-      </div>
-      <div class="stage-connector" id="conn-3"></div>
-      <div class="pipeline-stage">
-        <div class="stage-node">
-          <div class="stage-circle waiting" id="stage-4">4</div>
-          <div class="stage-label waiting" id="stage-4-label">Company</div>
-        </div>
-      </div>
-      <div class="stage-connector" id="conn-4"></div>
-      <div class="pipeline-stage">
-        <div class="stage-node">
-          <div class="stage-circle waiting" id="stage-5">5</div>
-          <div class="stage-label waiting" id="stage-5-label">Contacts</div>
-        </div>
-      </div>
-      <div class="stage-connector" id="conn-5"></div>
-      <div class="pipeline-stage">
-        <div class="stage-node">
-          <div class="stage-circle waiting" id="stage-6">6</div>
-          <div class="stage-label waiting" id="stage-6-label">Write-back</div>
-        </div>
-      </div>
-    </div>
-  </div>
+// All Notion field names that contain an em dash, built at startup.
+var F = {
+  finalStatus:     'FINAL ' + EM + ' Status',
+  finalFullPosting:'FINAL ' + EM + ' Full Posting',
+  finalIndustry:   'FINAL ' + EM + ' Industry',
+  finalTier:       'FINAL ' + EM + ' Tier',
+  finalWhyItFits:  'FINAL ' + EM + ' Why It Fits',
+  finalNotes:      'FINAL ' + EM + ' Notes',
+  finalPostingUrl: 'FINAL ' + EM + ' Job Posting URL',
+  m1Score:         'Module 1 ' + EM + ' Keyword Score',
+  m1Raw:           'Module 1 ' + EM + ' Keywords (Raw)',
+  m1Cleaned:       'Module 1 ' + EM + ' Keywords (Cleaned)',
+  m2Score:         'Module 2 ' + EM + ' Domain Score',
+  m2Signals:       'Module 2 ' + EM + ' Domain Signals',
+  m3Score:         'Module 3 ' + EM + ' Skills Match Score',
+  m3Skills:        'Module 3 ' + EM + ' Required Skills',
+  m4Score:         'Module 4 ' + EM + ' Seniority Score',
+  m4Signals:       'Module 4 ' + EM + ' Seniority Signals',
+  m5Score:         'Module 5 ' + EM + ' Industry Score',
+  m5Signals:       'Module 5 ' + EM + ' Industry Signals',
+  m6Summary:       'Module 6 ' + EM + ' Semantic Summary',
+  m7Score:         'Module 7 ' + EM + ' Hybrid Score',
+  m7Summary:       'Module 7 ' + EM + ' Weighted Summary',
+  m8Modules:       'Module 8 ' + EM + ' Recommended Resume Modules',
+  m8Match:         'Module 8 ' + EM + ' Match Summary (Formatted)'
+};
 
-  <div id="results-area">
-    <div class="results-header">
-      <div class="results-title">Analysis complete</div>
-      <div class="results-meta" id="results-timestamp"></div>
-    </div>
-    <div class="score-hero">
-      <div class="score-number" id="score-number">-<span>/100</span></div>
-      <div class="score-details">
-        <div class="score-label">Hybrid Match Score</div>
-        <div class="score-title" id="result-title">-</div>
-        <div class="score-subtitle" id="result-company">-</div>
-      </div>
-      <div class="fit-badge" id="fit-badge">-</div>
-    </div>
-    <div class="meta-row" id="meta-row"></div>
-    <div class="module-grid" id="module-grid"></div>
-    <div class="details-grid" id="details-grid"></div>
-    <div class="notion-link-row">
-      <div class="notion-link-text">
-        <strong>Full results in Notion</strong> — all 40+ fields written to the Job Postings database, including company record and contact enrichment.
-      </div>
-      <a class="notion-btn" href="https://www.notion.so/35b1850c4a7c801792e1f2a5971785ea" target="_blank">View in Notion →</a>
-    </div>
-  </div>
-</main>
+// --- Notion helpers -----------------------------------------------------------
 
-<footer>
-  Built by <a href="https://www.notion.so/d982b19992bb4628813962b9bb59a622">Stephen R. Cherico</a> &nbsp;·&nbsp; Career Intelligence Platform demo &nbsp;·&nbsp; Powered by Claude + Notion &nbsp;·&nbsp; 2026
-</footer>
-
-<script>
-function setStage(num, state) {
-  var circle = document.getElementById('stage-' + num);
-  var label  = document.getElementById('stage-' + num + '-label');
-  var conn   = document.getElementById('conn-' + (num - 1));
-  if (!circle) return;
-  circle.className = 'stage-circle ' + state;
-  label.className  = 'stage-label '  + state;
-  if (conn && state === 'done') conn.className = 'stage-connector done';
+function notionHeaders(token) {
+  return {
+    'Authorization': 'Bearer ' + token,
+    'Content-Type': 'application/json',
+    'Notion-Version': '2022-06-28'
+  };
 }
 
-function updateStatus(title, msg, type) {
-  var card  = document.getElementById('status-card');
-  var t     = document.getElementById('status-title');
-  var m     = document.getElementById('status-msg');
-  card.className = 'status-card status-' + type;
-  t.textContent  = title;
-  m.textContent  = msg;
-  var icons = { processing: 'processing', success: 'success', error: 'error' };
-  var iconMap = { processing: '⏳', success: '✅', error: '❌' };
-  card.querySelector('.status-icon').textContent = iconMap[type] || '⏳';
+// Short rich_text (<=2000 chars)
+function rt(text) {
+  if (!text) return [];
+  return [{ type: 'text', text: { content: String(text).slice(0, 2000) } }];
 }
 
-function completeAllStages() {
-  for (var i = 1; i <= 6; i++) { setStage(i, 'done'); }
-  for (var i = 1; i <= 5; i++) {
-    var c = document.getElementById('conn-' + i);
-    if (c) c.className = 'stage-connector done';
+// Long rich_text - splits into 2000-char blocks (up to 10000 chars total)
+function rtLong(text) {
+  if (!text) return [];
+  var str = String(text);
+  var chunks = [];
+  for (var i = 0; i < str.length && chunks.length < 5; i += 2000) {
+    chunks.push({ type: 'text', text: { content: str.slice(i, i + 2000) } });
   }
+  return chunks;
 }
 
-function getFitClass(fit) {
-  if (!fit) return 'fit-moderate';
-  var f = fit.toLowerCase();
-  if (f.includes('strong'))   return 'fit-strong';
-  if (f.includes('moderate')) return 'fit-moderate';
-  if (f.includes('stretch'))  return 'fit-stretch';
-  return 'fit-pass';
+function sel(name) {
+  if (!name) return null;
+  return { name: String(name) };
 }
 
-async function startPipeline() {
-  var postingText = document.getElementById('posting-text').value.trim();
-  var postingUrl  = document.getElementById('posting-url').value.trim();
+function multiSel(arr) {
+  if (!arr || !Array.isArray(arr)) return [];
+  return arr.slice(0, 10).map(function(n) { return { name: String(n) }; });
+}
+
+async function notionRequest(method, endpoint, body, token) {
+  var res = await fetch(NOTION_API + endpoint, {
+    method: method,
+    headers: notionHeaders(token),
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) {
+    var err = await res.text();
+    throw new Error('Notion ' + method + ' ' + endpoint + ' -> ' + res.status + ': ' + err);
+  }
+  return res.json();
+}
+
+// --- Company helpers ----------------------------------------------------------
+
+async function findCompany(companyName, token) {
+  var result = await notionRequest('POST', '/databases/' + COMPANIES_DB + '/query', {
+    filter: {
+      property: 'Company',
+      title: { contains: String(companyName).slice(0, 50) }
+    },
+    page_size: 1
+  }, token);
+  return result.results && result.results.length > 0 ? result.results[0] : null;
+}
+
+async function createCompany(data, token) {
+  var props = {
+    'Company': { title: rt(data.companyName) }
+  };
+  if (data.companyIndustry)       props['Industry']                   = { rich_text: rt(data.companyIndustry) };
+  if (data.companyHeadquarters)   props['Headquarters']               = { rich_text: rt(data.companyHeadquarters) };
+  if (data.companyEmployeeCount)  props['Employee Count']             = { number: data.companyEmployeeCount };
+  if (data.companySummary)        props['Company Summary']            = { rich_text: rt(data.companySummary) };
+  if (data.companyPrimaryProduct) props['Primary Product / Platform'] = { rich_text: rt(data.companyPrimaryProduct) };
+  if (data.companyTechStack)      props['Tech Stack (If Known)']      = { rich_text: rt(data.companyTechStack) };
+  if (data.companyType)           props['Company Type']               = { select: sel(data.companyType) };
+  if (data.companyWebsite)        props['Website']                    = { url: data.companyWebsite };
+
+  return notionRequest('POST', '/pages', {
+    parent: { database_id: COMPANIES_DB },
+    properties: props
+  }, token);
+}
+
+// --- Job posting helper -------------------------------------------------------
+
+async function createJobPosting(data, postingText, postingUrl, token) {
+  var today    = new Date().toISOString().split('T')[0];
+  var tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+  var props = {
+    'Job Title 1':          { title:     rt(data.jobTitle) },
+    'Company Name (Text)':  { rich_text: rt(data.companyName) },
+    'Location 1':           { rich_text: rt(data.location) },
+    'Source Type':          { select:    { name: 'Job Board' } },
+    'Lane':                 { select:    { name: 'Traditional Job Search' } },
+    'Next Action':          { rich_text: rt('Review & Tailor Resume') },
+    'Posting Raw':          { rich_text: rtLong(postingText) },
+    'Full Posting':         { rich_text: rtLong(postingText) },
+    'Date Evaluated':       { date:      { start: today } },
+    'Next Action Date':     { date:      { start: tomorrow } }
+  };
+
+  // Fields with em-dash names (using F.* constants)
+  props['Status']           = { status:    { name: 'Intake' } };
+  props[F.finalStatus]      = { select:    { name: 'Needs Review' } };
+  props[F.finalFullPosting] = { rich_text: rtLong(postingText) };
+  props[F.m6Summary]        = { rich_text: rt('Semantic scoring unavailable') };
+
+  // Selects - only write if value present
+  if (data.workModel)     props['Work Model 1']   = { select: sel(data.workModel) };
+  if (data.seniority)     props['Seniority']      = { select: sel(data.seniority) };
+  if (data.roleType)      props['Role Type']       = { select: sel(data.roleType) };
+  if (data.industry)      props['Industry']        = { select: sel(data.industry) };
+  if (data.finalIndustry) props[F.finalIndustry]   = { select: sel(data.finalIndustry) };
+  if (data.finalTier)     props[F.finalTier]        = { select: sel(data.finalTier) };
+  if (data.fitAssessment) props['Fit Assessment']  = { select: sel(data.fitAssessment) };
+
+  // Numbers
+  if (data.matchScore != null)              props['Match Score']  = { number: data.matchScore };
+  if (data.module1KeywordScore != null)     props[F.m1Score]      = { number: data.module1KeywordScore };
+  if (data.module2DomainScore != null)      props[F.m2Score]      = { number: data.module2DomainScore };
+  if (data.module3SkillsMatchScore != null) props[F.m3Score]      = { number: data.module3SkillsMatchScore };
+  if (data.module4SeniorityScore != null)   props[F.m4Score]      = { number: data.module4SeniorityScore };
+  if (data.module5IndustryScore != null)    props[F.m5Score]      = { number: data.module5IndustryScore };
+  if (data.module7HybridScore != null)      props[F.m7Score]      = { number: data.module7HybridScore };
+  if (data.salaryMin)                       props['Salary Min']   = { number: data.salaryMin };
+  if (data.salaryMax)                       props['Salary Max']   = { number: data.salaryMax };
+
+  // Long text fields
+  if (data.module1KeywordsRaw)        props[F.m1Raw]      = { rich_text: rt(data.module1KeywordsRaw) };
+  if (data.module1KeywordsCleaned)    props[F.m1Cleaned]  = { rich_text: rt(data.module1KeywordsCleaned) };
+  if (data.module2DomainSignals)      props[F.m2Signals]  = { rich_text: rt(data.module2DomainSignals) };
+  if (data.module3RequiredSkills)     props[F.m3Skills]   = { rich_text: rt(data.module3RequiredSkills) };
+  if (data.module4SenioritySignals)   props[F.m4Signals]  = { rich_text: rt(data.module4SenioritySignals) };
+  if (data.module5IndustrySignals)    props[F.m5Signals]  = { rich_text: rt(data.module5IndustrySignals) };
+  if (data.module7WeightedSummary)    props[F.m7Summary]  = { rich_text: rt(data.module7WeightedSummary) };
+  if (data.module8RecommendedModules) props[F.m8Modules]  = { rich_text: rt(data.module8RecommendedModules) };
+  if (data.module8MatchSummary)       props[F.m8Match]    = { rich_text: rt(data.module8MatchSummary) };
+  if (data.finalWhyItFits)            props[F.finalWhyItFits]  = { rich_text: rt(data.finalWhyItFits) };
+  if (data.gapsRisks)                 props['Gaps/Risks']      = { rich_text: rt(data.gapsRisks) };
+  if (data.evaluationNotes)           props['Evaluation Notes']= { rich_text: rt(data.evaluationNotes) };
+  if (data.compNotes)                 props['Comp Notes']       = { rich_text: rt(data.compNotes) };
+  if (data.finalNotes)                props[F.finalNotes]      = { rich_text: rt(data.finalNotes) };
+
+  // Multi-select
+  if (data.keyStrengths && data.keyStrengths.length > 0) {
+    props['Key Strengths'] = { multi_select: multiSel(data.keyStrengths) };
+  }
+
+  // URLs
+  if (postingUrl) {
+    props['Posting URL 1']    = { url: postingUrl };
+    props[F.finalPostingUrl]  = { url: postingUrl };
+  }
+
+  return notionRequest('POST', '/pages', {
+    parent: { database_id: JOBS_DB },
+    properties: props
+  }, token);
+}
+
+async function linkCompanyToPosting(jobPageId, companyPageId, token) {
+  return notionRequest('PATCH', '/pages/' + jobPageId, {
+    properties: {
+      'Company 1': { relation: [{ id: companyPageId }] }
+    }
+  }, token);
+}
+
+// --- Claude analysis prompt ---------------------------------------------------
+
+var SYSTEM_PROMPT = 'You are a job posting analysis agent for a career intelligence platform. Analyze job postings and return ONLY a JSON object - no preamble, no markdown, no explanation.';
+
+function buildAnalysisPrompt(postingText, postingUrl) {
+  return 'Analyze this job posting and return ONLY valid JSON with no other text.\n\n' +
+    'JOB POSTING URL: ' + (postingUrl || 'Not provided') + '\n\n' +
+    'JOB POSTING TEXT:\n' + postingText + '\n\n' +
+    'Return this exact JSON structure:\n' +
+    '{\n' +
+    '  "jobTitle": "exact job title from posting",\n' +
+    '  "companyName": "normalized company name",\n' +
+    '  "location": "city/state or Remote",\n' +
+    '  "workModel": "Remote OR Hybrid OR On-Site",\n' +
+    '  "seniority": "one of: IC-Senior, IC-Staff, IC-Principal, Manager, Sr. Manager, Director, Sr. Director, VP, SVP, C-Level",\n' +
+    '  "roleType": "one of: Product Management, Product Operations, Program Management, Process/Ops Leadership, Implementation, Consulting, Other",\n' +
+    '  "industry": "one of: Technology, Pharma/Life Sciences, Financial Services, Travel/Hospitality, Healthcare, Government/Defense, Consulting, Other",\n' +
+    '  "finalIndustry": "one of: SaaS, FinTech, HealthTech, Enterprise Tech, Travel Tech, Marketplace, Product Studio",\n' +
+    '  "finalTier": "one of: Small (50-200), Mid (200-1000), Large (1000+)",\n' +
+    '  "salaryMin": null,\n' +
+    '  "salaryMax": null,\n' +
+    '  "module1KeywordsRaw": "15-20 raw keywords from the posting, comma-separated",\n' +
+    '  "module1KeywordsCleaned": "10 priority deduplicated keywords, comma-separated",\n' +
+    '  "module1KeywordScore": 72,\n' +
+    '  "module2DomainSignals": "2-3 sentences on domain alignment",\n' +
+    '  "module2DomainScore": 68,\n' +
+    '  "module3RequiredSkills": "required skills, comma-separated",\n' +
+    '  "module3SkillsMatchScore": 75,\n' +
+    '  "module4SenioritySignals": "seniority signals from posting",\n' +
+    '  "module4SeniorityScore": 80,\n' +
+    '  "module5IndustrySignals": "industry signals from posting",\n' +
+    '  "module5IndustryScore": 70,\n' +
+    '  "module7HybridScore": 73,\n' +
+    '  "module7WeightedSummary": "Hybrid = 0.50xModule1 + 0.30xModule2 + 0.20xModule4 = X",\n' +
+    '  "module8RecommendedModules": "8-10 resume module names, comma-separated",\n' +
+    '  "module8MatchSummary": "2-3 sentence match summary",\n' +
+    '  "matchScore": 73,\n' +
+    '  "fitAssessment": "one of: Strong Fit, Moderate Fit, Stretch, Long Shot, Not a Fit",\n' +
+    '  "finalWhyItFits": "one-line fit rationale",\n' +
+    '  "keyStrengths": ["Workflow Design", "Cross-Functional Leadership"],\n' +
+    '  "gapsRisks": "identified gaps or risks as plain text",\n' +
+    '  "evaluationNotes": "2-3 sentence scoring rationale",\n' +
+    '  "compNotes": "comp notes - salary range if stated, bonus structure, equity, benefits highlights. Empty string if none mentioned",\n' +
+    '  "finalNotes": "2-3 sentences on comp/location context, priority, and resume guidance",\n' +
+    '  "companyWebsite": null,\n' +
+    '  "companyIndustry": "industry text",\n' +
+    '  "companyHeadquarters": "HQ city/state if known",\n' +
+    '  "companyEmployeeCount": null,\n' +
+    '  "companySummary": "1-2 sentence company overview",\n' +
+    '  "companyPrimaryProduct": "main product or platform if mentioned",\n' +
+    '  "companyTechStack": "tech stack if mentioned",\n' +
+    '  "companyType": "one of: Employer, Vendor, Partner, Recruiting Agency, Staffing Firm, Consulting Firm"\n' +
+    '}\n\n' +
+    'Scoring rules:\n' +
+    '- Module 1 (Keywords 0-100): keyword density and relevance to product ops / program management\n' +
+    '- Module 2 (Domain 0-100): alignment with product operations, workflow design, SaaS\n' +
+    '- Module 3 (Skills 0-100): match to Workflow Design, Cross-Functional Leadership, SaaS Implementation, Global Ops, Process Harmonization, Stakeholder Alignment, AI/Automation\n' +
+    '- Module 4 (Seniority 0-100): IC-Senior through Director = high; VP+ or IC-Junior = lower\n' +
+    '- Module 5 (Industry 0-100): SaaS/Tech = 85+; FinTech/HealthTech = 75+; others vary\n' +
+    '- Module 7 (Hybrid): Math.round(0.50*M1 + 0.30*M2 + 0.20*M4)\n' +
+    '- matchScore = Module 7 Hybrid Score\n' +
+    '- fitAssessment: Strong Fit (80+), Moderate Fit (65-79), Stretch (50-64), Long Shot (35-49), Not a Fit (<35)\n' +
+    '- keyStrengths: only from this list: Workflow Design, Cross-Functional Leadership, SaaS Implementation, Global Ops, Regulated Environments, Process Harmonization, Stakeholder Alignment, AI/Automation, ERP/Systems, Change Management\n\n' +
+    'Return ONLY the JSON. No markdown fences, no commentary.';
+}
+
+// --- Main endpoint ------------------------------------------------------------
+
+app.post('/api/analyze', async function(req, res) {
+  var postingText = req.body.postingText;
+  var postingUrl  = req.body.postingUrl;
 
   if (!postingText || postingText.length < 100) {
-    alert('Please paste the full job posting text (at least a few paragraphs).');
-    return;
-  }
-  if (!postingUrl) {
-    alert('Please provide the job posting URL.');
-    return;
+    return res.status(400).json({ error: 'Posting text too short' });
   }
 
-  var btn = document.getElementById('submit-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> Running pipeline...';
+  var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  var NOTION_TOKEN  = process.env.NOTION_TOKEN;
 
-  document.getElementById('status-area').style.display  = 'block';
-  document.getElementById('results-area').style.display = 'none';
-  updateStatus('Pipeline starting...', 'Initializing analysis...', 'processing');
-
-  // Reset all stages to waiting
-  for (var i = 1; i <= 6; i++) { setStage(i, 'waiting'); }
-  for (var i = 1; i <= 5; i++) {
-    var c = document.getElementById('conn-' + i);
-    if (c) c.className = 'stage-connector';
+  if (!ANTHROPIC_KEY || !NOTION_TOKEN) {
+    return res.status(500).json({ error: 'Server configuration error' });
   }
-
-  // Cosmetic stage progression — timers get CANCELLED when the API responds.
-  // These fire relative to submission and show activity while Claude is working.
-  var pendingTimers = [];
-  var stages = [
-    { delay:  1000, stage: 1, state: 'active', title: 'Parsing posting...', msg: 'Extracting metadata and sending to Claude for analysis.' },
-    { delay:  4000, stage: 1, state: 'done',   title: 'Posting parsed', msg: 'Running 8 scoring modules: keywords, domain, skills, seniority, industry...' },
-    { delay:  5000, stage: 2, state: 'active', title: 'Scoring modules running', msg: 'Analyzing keywords, domain signals, and required skills...' },
-    { delay: 18000, stage: 2, state: 'done',   title: 'Modules 1-5 complete', msg: 'Computing Hybrid Score (0.50 x Keywords + 0.30 x Domain + 0.20 x Seniority)...' },
-    { delay: 19000, stage: 3, state: 'active', title: 'Computing Hybrid Score', msg: 'Weighing module scores to produce final fit rating...' },
-    { delay: 23000, stage: 3, state: 'done',   title: 'Hybrid Score computed', msg: 'Looking up company in Notion, creating record if new...' },
-    { delay: 24000, stage: 4, state: 'active', title: 'Company enrichment', msg: 'Searching for existing company record, creating if not found...' },
-    { delay: 35000, stage: 4, state: 'done',   title: 'Company record ready', msg: 'Searching for contacts associated with this role...' },
-    { delay: 36000, stage: 5, state: 'active', title: 'Contacts lookup', msg: 'Searching for recruiter and hiring manager contacts...' },
-    { delay: 44000, stage: 5, state: 'done',   title: 'Contacts step complete', msg: 'Writing all results to Notion and linking company record...' },
-    { delay: 45000, stage: 6, state: 'active', title: 'Writing to Notion', msg: 'Creating job posting record and connecting to company...' },
-  ];
-
-  stages.forEach(function(s) {
-    var id = setTimeout(function() {
-      setStage(s.stage, s.state);
-      updateStatus(s.title, s.msg, 'processing');
-    }, s.delay);
-    pendingTimers.push(id);
-  });
 
   try {
-    var response = await fetch('/api/analyze', {
+    // Step 1: Claude analysis
+    var claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postingText: postingText, postingUrl: postingUrl })
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: buildAnalysisPrompt(postingText, postingUrl) }]
+      })
     });
 
-    // Cancel ALL pending cosmetic timers — API has responded.
-    pendingTimers.forEach(function(id) { clearTimeout(id); });
-
-    if (!response.ok) {
-      var errData = await response.json();
-      throw new Error(errData.error || 'Server error ' + response.status);
+    if (!claudeRes.ok) {
+      var claudeErr = await claudeRes.text();
+      throw new Error('Claude API error: ' + claudeRes.status + ' - ' + claudeErr);
     }
 
-    var result = await response.json();
-    if (!result.success) throw new Error('Pipeline reported failure');
+    var claudeData  = await claudeRes.json();
+    var textContent = claudeData.content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('');
+    var jsonMatch   = textContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON in Claude response');
+    var data = JSON.parse(jsonMatch[0]);
 
-    // Mark every stage complete and show success.
-    completeAllStages();
-    updateStatus('Pipeline complete', 'All steps completed. Results written to Notion.', 'success');
+    // Step 2: Find or create company
+    var companyPageId = null;
+    var companyCreated = false;
+    try {
+      var existing = await findCompany(data.companyName, NOTION_TOKEN);
+      if (existing) {
+        companyPageId = existing.id;
+        console.log('Found existing company:', data.companyName, companyPageId);
+      } else {
+        var newCo = await createCompany(data, NOTION_TOKEN);
+        companyPageId = newCo.id;
+        companyCreated = true;
+        console.log('Created new company:', data.companyName, companyPageId);
+      }
+    } catch (companyErr) {
+      console.error('Company step error (non-fatal):', companyErr.message);
+    }
 
-    setTimeout(function() { showResults(result); }, 600);
+    // Step 3: Create job posting
+    var jobPage   = await createJobPosting(data, postingText, postingUrl, NOTION_TOKEN);
+    var jobPageId = jobPage.id;
+    console.log('Created job posting:', data.jobTitle, jobPageId);
 
-  } catch(err) {
-    pendingTimers.forEach(function(id) { clearTimeout(id); });
-    updateStatus('Pipeline error', err.message + ' — Please try again.', 'error');
-    btn.disabled = false;
-    btn.innerHTML = 'Analyze posting <span class="btn-arrow">→</span>';
+    // Step 4: Back-link company to job posting
+    if (jobPageId && companyPageId) {
+      try {
+        await linkCompanyToPosting(jobPageId, companyPageId, NOTION_TOKEN);
+        console.log('Linked company', companyPageId, 'to job posting', jobPageId);
+      } catch (linkErr) {
+        console.error('Backlink step error (non-fatal):', linkErr.message);
+      }
+    }
+
+    res.json({
+      success:       true,
+      jobTitle:      data.jobTitle      || '',
+      companyName:   data.companyName   || '',
+      location:      data.location      || '',
+      workModel:     data.workModel     || '',
+      seniority:     data.seniority     || '',
+      industry:      data.industry      || '',
+      salaryMin:     data.salaryMin     || null,
+      salaryMax:     data.salaryMax     || null,
+      hybridScore:   data.module7HybridScore    || 0,
+      fitAssessment: data.fitAssessment          || '',
+      status:        'Needs Review',
+      keywordsScore: data.module1KeywordScore    || 0,
+      domainScore:   data.module2DomainScore     || 0,
+      skillsScore:   data.module3SkillsMatchScore|| 0,
+      seniorityScore:data.module4SeniorityScore  || 0,
+      industryScore: data.module5IndustryScore   || 0,
+      keysCleaned:   data.module1KeywordsCleaned || '',
+      domainSignals: data.module2DomainSignals   || '',
+      fitRationale:  data.finalWhyItFits         || '',
+      gapsRisks:     data.gapsRisks              || '',
+      finalNotes:    data.finalNotes             || '',
+      companyCreated: companyCreated,
+      contactsFound: false
+    });
+
+  } catch (err) {
+    console.error('Pipeline error:', err.message);
+    res.status(500).json({ error: err.message });
   }
-}
+});
 
-function showResults(r) {
-  document.getElementById('results-area').style.display = 'block';
-  document.getElementById('results-timestamp').textContent = 'Processed ' + new Date().toLocaleTimeString();
-  document.getElementById('score-number').innerHTML = Math.round(r.hybridScore || 0) + '<span>/100</span>';
-  document.getElementById('result-title').textContent   = r.jobTitle    || '-';
-  document.getElementById('result-company').textContent = r.companyName || '-';
+app.get('*', function(req, res) {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
-  var fitBadge = document.getElementById('fit-badge');
-  fitBadge.textContent = r.fitAssessment || '-';
-  fitBadge.className   = 'fit-badge ' + getFitClass(r.fitAssessment);
-
-  var metaRow = document.getElementById('meta-row');
-  var metas = [
-    r.location  && { icon: '📍', text: r.location },
-    r.workModel && { icon: '💻', text: r.workModel },
-    r.seniority && { icon: '⭐', text: r.seniority },
-    r.industry  && { icon: '🏢', text: r.industry },
-    (r.salaryMin && r.salaryMax) && { icon: '💰', text: '$' + Math.round(r.salaryMin/1000) + 'k-$' + Math.round(r.salaryMax/1000) + 'k' },
-    r.status    && { icon: '📊', text: r.status },
-  ].filter(Boolean);
-  metaRow.innerHTML = metas.map(function(m) {
-    return '<div class="meta-pill"><span>' + m.icon + '</span>' + m.text + '</div>';
-  }).join('');
-
-  var moduleGrid = document.getElementById('module-grid');
-  var modules = [
-    { name: 'Keywords',     val: r.keywordsScore },
-    { name: 'Domain',       val: r.domainScore },
-    { name: 'Skills match', val: r.skillsScore },
-    { name: 'Seniority',    val: r.seniorityScore },
-    { name: 'Industry',     val: r.industryScore },
-    { name: 'Hybrid score', val: r.hybridScore },
-  ];
-  moduleGrid.innerHTML = modules.map(function(m) {
-    return '<div class="module-card"><div class="module-name">' + m.name + '</div>' +
-      '<div class="module-score-row"><div class="module-score-val">' + Math.round(m.val || 0) + '</div>' +
-      '<div class="score-bar-wrap"><div class="score-bar" style="width:' + Math.round(m.val || 0) + '%"></div></div></div></div>';
-  }).join('');
-
-  var detailsGrid = document.getElementById('details-grid');
-  var details = [
-    r.fitRationale  && { label: 'Why it fits',            value: r.fitRationale },
-    r.gapsRisks     && { label: 'Gaps &amp; risks',       value: r.gapsRisks },
-    r.keysCleaned   && { label: 'Top keywords extracted', tags: r.keysCleaned.split(',').map(function(s){ return s.trim(); }).filter(Boolean) },
-    r.domainSignals && { label: 'Domain signals',         value: r.domainSignals },
-    r.finalNotes    && { label: 'Pipeline notes',         value: r.finalNotes, full: true },
-  ].filter(Boolean);
-
-  detailsGrid.innerHTML = details.map(function(d) {
-    return '<div class="detail-card' + (d.full ? ' full-width' : '') + '">' +
-      '<div class="detail-card-label">' + d.label + '</div>' +
-      (d.value ? '<div class="detail-card-value">' + d.value + '</div>' : '') +
-      (d.tags  ? '<div class="detail-tag-list">' + d.tags.slice(0,16).map(function(t){ return '<span class="detail-tag">' + t + '</span>'; }).join('') + '</div>' : '') +
-      '</div>';
-  }).join('');
-
-  document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  var btn = document.getElementById('submit-btn');
-  btn.disabled = false;
-  btn.innerHTML = 'Analyze another posting <span class="btn-arrow">→</span>';
-}
-</script>
-</body>
-</html>
+var PORT = process.env.PORT || 3000;
+app.listen(PORT, function() { console.log('Career Intelligence Demo running on port ' + PORT); });
