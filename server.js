@@ -846,7 +846,7 @@ app.post('/api/search-jobs', async function(req, res) {
 // ── Resume Assembly Engine ─────────────────────────────────────────────────
 
 async function queryLibSection(sectionName, limit, token) {
-  var r = await notionRequest('POST', '/databases/' + RESUME_LIB + '/query', {
+  var r = await notionRequest('POST', '/databases/' + RESUME_LIB_COL + '/query', {
     filter: { property: 'Section', select: { equals: sectionName } },
     sorts: [{ property: 'Rank', direction: 'ascending' }],
     page_size: limit || 10
