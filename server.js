@@ -788,18 +788,25 @@ app.post('/api/search-jobs', async function(req, res) {
     if (!companyName) return res.status(400).json({ error: 'companyName required' });
     var NOTION_TOKEN = process.env.NOTION_TOKEN;
 
-    // Use /search (more reliable than /databases/{id}/query for this DB)
-    var r = await notionRequest('POST', '/search', {
-      query:  companyName,
-      filter: { value: 'page', property: 'object' },
-      page_size: 20
+    // Query Jobs DB — no filter or sort to avoid invalid_request_url;
+    // filter client-side by company name
+    var r = await notionRequest('POST', '/databases/' + JOBS_DB + '/query', {
+      page_size: 100
     }, NOTION_TOKEN);
 
-    // Keep only pages whose parent is the Jobs DB
-    var jobsDbNorm = JOBS_DB.replace(/-/g, '');
+    var nameLower = companyName.toLowerCase();
     var pages = (r.results || []).filter(function(page) {
-      if (!page.parent || page.parent.type !== 'database_id') return false;
-      return page.parent.database_id.replace(/-/g, '') === jobsDbNorm;
+      var jp = page.properties;
+      function txt(field) {
+        var f = jp[field];
+        if (!f) return '';
+        if (f.rich_text && f.rich_text[0]) return f.rich_text[0].plain_text;
+        if (f.title     && f.title[0])     return f.title[0].plain_text;
+        return '';
+      }
+      var co    = txt('Company Name (Text)').toLowerCase();
+      var title = txt('Job Title 1').toLowerCase();
+      return co.includes(nameLower) || title.includes(nameLower);
     });
 
     var jobs = pages.map(function(page) {
