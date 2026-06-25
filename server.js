@@ -451,17 +451,25 @@ app.post('/api/enrich', async function(req, res) {
       return true;
     }
 
-    // Step 2a: Five targeted Serper searches
+    // Step 2a: Normalize company name for search (strip parentheticals, legal suffixes)
+    var searchName = companyName
+      .replace(/\s*\([^)]*\)\s*/g, ' ')   // remove (DoseSpot) style parentheticals
+      .replace(/,?\s*(Inc|LLC|Corp|Ltd|Co|LP|LLP|PLC)\.?$/i, '')  // remove legal suffixes
+      .replace(/\s+/g, ' ')
+      .trim();
+    console.log('Search name normalized:', searchName, '(from:', companyName + ')');
+
+    // Step 2b: Five targeted Serper searches
     var SERPER_KEY  = process.env.SERPER_API_KEY || '';
     var searchContext = '';
     if (SERPER_KEY) {
-      console.log('Running Serper searches for:', companyName);
+      console.log('Running Serper searches for:', searchName, '(original:', companyName + ')');
       var results = await Promise.all([
-        serperSearch(companyName + ' headquarters address phone number', SERPER_KEY),
-        serperSearch(companyName + ' company overview employees industry funding', SERPER_KEY),
-        serperSearch('"' + companyName + '" recruiter "talent acquisition" linkedin', SERPER_KEY),
-        serperSearch('"' + companyName + '" "HR director" OR "head of HR" OR "people operations" OR "VP people" linkedin', SERPER_KEY),
-        serperSearch('"' + companyName + '" "director of product" OR "VP operations" OR "head of product" OR "hiring manager" linkedin', SERPER_KEY)
+        serperSearch(searchName + ' headquarters address phone number', SERPER_KEY),
+        serperSearch(searchName + ' company overview employees industry funding', SERPER_KEY),
+        serperSearch('"' + searchName + '" recruiter "talent acquisition" linkedin', SERPER_KEY),
+        serperSearch('"' + searchName + '" "HR director" OR "head of HR" OR "people operations" OR "VP people" linkedin', SERPER_KEY),
+        serperSearch('"' + searchName + '" "director of product" OR "VP operations" OR "head of product" OR "hiring manager" linkedin', SERPER_KEY)
       ]);
       searchContext = [
         '=== Address / Phone ===', results[0],
@@ -593,4 +601,7 @@ app.get('*', function(req, res) {
 });
 
 var PORT = process.env.PORT || 3000;
-app.listen(PORT, function() { console.log('Career Intelligence Demo running on port ' + PORT); });
+app.listen(PORT, function() {
+  console.log('Career Intelligence Demo running on port ' + PORT);
+  console.log('ENV CHECK -- ANTHROPIC_KEY:', !!process.env.ANTHROPIC_API_KEY, '| NOTION_TOKEN:', !!process.env.NOTION_TOKEN, '| SERPER_API_KEY:', !!process.env.SERPER_API_KEY, '| key length:', (process.env.SERPER_API_KEY || '').length);
+});
