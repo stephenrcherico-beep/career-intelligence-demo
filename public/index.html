@@ -628,6 +628,17 @@
     .ra-section { padding: 16px 20px; }
   }
 
+
+  .ra-picker-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 16px 0 8px; letter-spacing: 0.03em; text-transform: uppercase; }
+  .ra-job-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s, background 0.15s; background: var(--white); }
+  .ra-job-item:hover { border-color: var(--gold); background: rgba(200,168,75,0.04); }
+  .ra-job-item.selected { border-color: var(--gold); background: rgba(200,168,75,0.08); }
+  .ra-job-item-radio { width: 16px; height: 16px; accent-color: var(--gold-dim); flex-shrink: 0; }
+  .ra-job-item-body { flex: 1; min-width: 0; }
+  .ra-job-item-title { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ra-job-item-meta  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .ra-job-item-score { font-size: 13px; font-weight: 700; color: var(--gold-dim); flex-shrink: 0; }
+
 </style>
 </head>
 <body>
@@ -1003,23 +1014,32 @@
       <p>Enter a company you've already analyzed &mdash; the engine finds the job record, loads your Modular Resume Library, and assembles a tailored resume preview following SOP v3.6 rules.</p>
     </div>
 
-    <!-- Input -->
+    <!-- Input: Step 1 — Search -->
     <div id="ra-form-area">
       <div class="ra-input-row">
         <input type="text" id="ra-company" class="ra-input"
                placeholder="Company name (e.g. Dell, Softbank, Maven Clinic)"
-               onkeydown="if(event.key==='Enter') startAssembly()" />
-        <select id="ra-type-override" class="ra-select">
-          <option value="">Auto-detect resume type</option>
-          <option value="Product Operations">Product Operations</option>
-          <option value="Delivery Operations / Implementation">Delivery / Implementation</option>
-          <option value="Systems Leadership">Systems Leadership</option>
-          <option value="Zero-to-One / Founder">Zero-to-One / Founder</option>
-          <option value="Hybrid">Hybrid</option>
-        </select>
-        <button class="ra-btn" id="ra-btn" onclick="startAssembly()">Assemble &#8594;</button>
+               onkeydown="if(event.key==='Enter') searchJobs()" />
+        <button class="ra-btn" id="ra-search-btn" onclick="searchJobs()">Search &#8594;</button>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin:0;">Run the Job Posting Analyzer first. The assembly engine reads from your analyzed Notion records.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 4px;">Run the Job Posting Analyzer first. Search finds all analyzed postings for that company.</p>
+
+      <!-- Step 2 — Job picker (hidden until search returns results) -->
+      <div id="ra-job-picker" style="display:none">
+        <div class="ra-picker-label">Select the posting to build for:</div>
+        <div id="ra-job-list"></div>
+        <div class="ra-input-row" style="margin-top:14px;">
+          <select id="ra-type-override" class="ra-select">
+            <option value="">Auto-detect resume type</option>
+            <option value="Product Operations">Product Operations</option>
+            <option value="Delivery Operations / Implementation">Delivery / Implementation</option>
+            <option value="Systems Leadership">Systems Leadership</option>
+            <option value="Zero-to-One / Founder">Zero-to-One / Founder</option>
+            <option value="Hybrid">Hybrid</option>
+          </select>
+          <button class="ra-btn" id="ra-assemble-btn" onclick="startAssembly()" disabled>Assemble &#8594;</button>
+        </div>
+      </div>
     </div>
 
     <!-- Pipeline -->
@@ -1654,9 +1674,10 @@ function switchTab(id) {
 
 
 <script>
-var raAssembled = null;
-var raJobTitle  = '';
-var raCompany   = '';
+var raAssembled    = null;
+var raJobTitle     = '';
+var raCompany      = '';
+var raSelectedJobId = null;
 
 function raSetStage(n, state) {
   var el = document.getElementById('ra-s' + n);
@@ -1666,12 +1687,70 @@ function raSetStage(n, state) {
   ic.innerHTML = state === 'done' ? '&#10003;' : state === 'active' ? '&#9679;' : '&#9675;';
 }
 
-async function startAssembly() {
-  var company  = (document.getElementById('ra-company').value || '').trim();
-  var override = document.getElementById('ra-type-override').value;
+async function searchJobs() {
+  var company = (document.getElementById('ra-company').value || '').trim();
   if (!company) { alert('Enter a company name.'); return; }
+  var btn = document.getElementById('ra-search-btn');
+  btn.disabled = true;
+  btn.textContent = 'Searching…';
+  document.getElementById('ra-job-picker').style.display = 'none';
+  document.getElementById('ra-error').style.display = 'none';
 
-  raCompany  = company;
+  try {
+    var resp = await fetch('/api/search-jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyName: company })
+    });
+    var data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || 'Search failed');
+    if (!data.jobs || data.jobs.length === 0) throw new Error('No analyzed jobs found for "' + company + '". Run the Job Posting Analyzer first.');
+
+    raSelectedJobId = null;
+    document.getElementById('ra-assemble-btn').disabled = true;
+    var list = document.getElementById('ra-job-list');
+    list.innerHTML = '';
+    data.jobs.forEach(function(job) {
+      var item = document.createElement('div');
+      item.className = 'ra-job-item';
+      item.dataset.id      = job.id;
+      item.dataset.title   = job.jobTitle;
+      item.dataset.company = job.company;
+      var scoreLabel = job.score != null ? job.score + ' pts' : '';
+      var tierLabel  = job.tier  || '';
+      var metaParts  = [job.dateEval, tierLabel, scoreLabel].filter(Boolean);
+      item.innerHTML =
+        '<input type="radio" class="ra-job-item-radio" name="ra-job-radio" />' +
+        '<div class="ra-job-item-body">' +
+          '<div class="ra-job-item-title">' + (job.jobTitle || '(Untitled)') + '</div>' +
+          '<div class="ra-job-item-meta">'  + metaParts.join(' &nbsp;&middot;&nbsp; ') + '</div>' +
+        '</div>' +
+        (job.score != null ? '<div class="ra-job-item-score">' + job.score + '</div>' : '');
+      item.addEventListener('click', function() {
+        document.querySelectorAll('.ra-job-item').forEach(function(el){ el.classList.remove('selected'); el.querySelector('input').checked = false; });
+        item.classList.add('selected');
+        item.querySelector('input').checked = true;
+        raSelectedJobId = job.id;
+        raCompany  = job.company || company;
+        raJobTitle = job.jobTitle || company;
+        document.getElementById('ra-assemble-btn').disabled = false;
+      });
+      list.appendChild(item);
+    });
+    document.getElementById('ra-job-picker').style.display = 'block';
+  } catch (err) {
+    document.getElementById('ra-error').style.display = 'block';
+    document.getElementById('ra-error').textContent   = 'Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Search →';
+  }
+}
+
+async function startAssembly() {
+  if (!raSelectedJobId) { alert('Select a job posting first.'); return; }
+  var override = document.getElementById('ra-type-override').value;
+
   raAssembled = null;
   document.getElementById('ra-form-area').style.display = 'none';
   document.getElementById('ra-preview').style.display   = 'none';
@@ -1679,7 +1758,6 @@ async function startAssembly() {
   document.getElementById('ra-pipeline').style.display  = 'block';
   [1,2,3,4,5].forEach(function(i){ raSetStage(i, ''); });
 
-  // Animate stages progressively
   var delays = [0, 600, 1200, 1900, 2800];
   delays.forEach(function(d, idx){ setTimeout(function(){ raSetStage(idx+1,'active'); }, d); });
 
@@ -1687,7 +1765,7 @@ async function startAssembly() {
     var resp = await fetch('/api/assemble-resume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyName: company, resumeTypeOverride: override })
+      body: JSON.stringify({ notionJobId: raSelectedJobId, companyName: raCompany, resumeTypeOverride: override })
     });
     var data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || 'Assembly failed');
@@ -1695,7 +1773,7 @@ async function startAssembly() {
     [1,2,3,4,5].forEach(function(i){ raSetStage(i,'done'); });
     await new Promise(function(r){ setTimeout(r, 400); });
 
-    raJobTitle  = data.jobTitle || company;
+    raJobTitle  = data.jobTitle || raJobTitle;
     raAssembled = data.assembled;
     showAssemblyPreview(data);
   } catch (err) {
@@ -1806,11 +1884,14 @@ function copyCoworkPrompt() {
 function resetAssembly() {
   document.getElementById('ra-company').value = '';
   document.getElementById('ra-type-override').value = '';
-  document.getElementById('ra-preview').style.display  = 'none';
-  document.getElementById('ra-pipeline').style.display = 'none';
-  document.getElementById('ra-error').style.display    = 'none';
-  document.getElementById('ra-form-area').style.display = 'block';
+  document.getElementById('ra-preview').style.display    = 'none';
+  document.getElementById('ra-pipeline').style.display   = 'none';
+  document.getElementById('ra-error').style.display      = 'none';
+  document.getElementById('ra-job-picker').style.display = 'none';
+  document.getElementById('ra-job-list').innerHTML       = '';
+  document.getElementById('ra-form-area').style.display  = 'block';
   raAssembled = null;
+  raSelectedJobId = null;
 }
 </script>
 
