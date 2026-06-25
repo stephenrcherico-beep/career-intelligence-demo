@@ -9,6 +9,7 @@ app.use(express.json({ limit: '50kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const JOBS_DB      = '403582a0e82b4e349c300a084f332ad1';
+const JOBS_DB_COL  = '859e4744-488d-439c-98f8-87ca4b5b8ddb'; // collection / data_source_id
 const COMPANIES_DB = 'b3e93effd284415280a842c6ef5ffc92';
 const RESUME_LIB   = 'd74582b89b3e44de8fcb7437a59dadb1';
 const RESUME_LIB_COL = 'ef9a489f-9bb1-4ebf-b665-03b31993cc47'; // collection / data_source_id
@@ -790,7 +791,7 @@ app.post('/api/search-jobs', async function(req, res) {
 
     // Query Jobs DB — no filter or sort to avoid invalid_request_url;
     // filter client-side by company name
-    var r = await notionRequest('POST', '/databases/' + JOBS_DB + '/query', {
+    var r = await notionRequest('POST', '/databases/' + JOBS_DB_COL + '/query', {
       page_size: 100
     }, NOTION_TOKEN);
 
