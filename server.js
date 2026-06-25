@@ -801,17 +801,12 @@ app.post('/api/search-jobs', async function(req, res) {
     }, NOTION_TOKEN);
 
     var nameLower   = companyName.toLowerCase();
-    var jobsDbNorm  = JOBS_DB.replace(/-/g, '');
-    var jobsColNorm = JOBS_DB_COL.replace(/-/g, '');
 
+    // Identify job postings by their unique properties instead of parent ID
+    // (Notion v2025-09-03 returns unpredictable parent types for collection rows)
     var pages = (r.results || []).filter(function(page) {
-      var p = page.parent;
-      if (!p) return false;
-      // Notion v2025-09-03 returns parent.data_source_id for collection-backed rows
-      var ids = [p.database_id, p.data_source_id, p.block_id]
-        .map(function(id) { return (id || '').replace(/-/g, ''); })
-        .filter(Boolean);
-      return ids.indexOf(jobsDbNorm) !== -1 || ids.indexOf(jobsColNorm) !== -1;
+      if (!page.properties) return false;
+      return !!(page.properties['Job Title 1'] && page.properties['Company Name (Text)']);
     });
 
     var jobs = pages.map(function(page) {
@@ -836,7 +831,8 @@ app.post('/api/search-jobs', async function(req, res) {
     });
 
     if (jobs.length === 0) {
-      return res.status(404).json({ error: 'No analyzed jobs found for "' + companyName + '". Run the Job Posting Analyzer first.' });
+      var dbg = ' [search=' + (r.results||[]).length + ' matched=' + pages.length + ']';
+      return res.status(404).json({ error: 'No analyzed jobs found for "' + companyName + '".' + dbg + ' Run the Job Posting Analyzer first.' });
     }
 
     res.json({ ok: true, jobs });
