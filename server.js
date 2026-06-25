@@ -778,6 +778,175 @@ app.post('/api/ingest-story', async function(req, res) {
   }
 });
 
+
+// ── Resume Assembly Engine ─────────────────────────────────────────────────
+
+async function queryLibSection(sectionName, limit, token) {
+  var r = await notionRequest('POST', '/databases/' + RESUME_LIB + '/query', {
+    filter: { property: 'Section', select: { equals: sectionName } },
+    sorts: [{ property: 'Rank', direction: 'ascending' }],
+    page_size: limit || 10
+  }, token);
+  return (r.results || []).map(function(p) {
+    var pr = p.properties;
+    function txt(field) {
+      var f = pr[field];
+      if (!f) return '';
+      if (f.rich_text && f.rich_text[0]) return f.rich_text[0].plain_text;
+      if (f.title   && f.title[0])      return f.title[0].plain_text;
+      return '';
+    }
+    return {
+      module:     txt('Module'),
+      text:       txt('Text'),
+      longVer:    txt('Long Version'),
+      keywords:   txt('Keywords'),
+      employer:   pr['Employer']    && pr['Employer'].select    ? pr['Employer'].select.name    : '',
+      bulletType: pr['Bullet Type'] && pr['Bullet Type'].select ? pr['Bullet Type'].select.name : '',
+      jobFamily:  (pr['Job Family'] && pr['Job Family'].multi_select || []).map(function(s){ return s.name; }),
+      rank:       pr['Rank'] && pr['Rank'].number != null ? pr['Rank'].number : 50
+    };
+  });
+}
+
+app.post('/api/assemble-resume', async function(req, res) {
+  try {
+    var companyName       = req.body.companyName;
+    var resumeTypeOverride = req.body.resumeTypeOverride || '';
+    if (!companyName) return res.status(400).json({ error: 'companyName required' });
+
+    var NOTION_TOKEN  = process.env.NOTION_TOKEN;
+    var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+
+    // 1 — Find the most recent matching job in Jobs DB
+    var jobQuery = await notionRequest('POST', '/databases/' + JOBS_DB + '/query', {
+      filter: { property: 'Company Name (Text)', rich_text: { contains: companyName } },
+      sorts:  [{ timestamp: 'created_time', direction: 'descending' }],
+      page_size: 1
+    }, NOTION_TOKEN);
+
+    if (!jobQuery.results || jobQuery.results.length === 0) {
+      return res.status(404).json({ error: 'No analyzed job found for "' + companyName + '". Run the Job Posting Analyzer first.' });
+    }
+
+    var job = jobQuery.results[0];
+    var jp  = job.properties;
+    function jTxt(field) {
+      var f = jp[field];
+      if (!f) return '';
+      if (f.rich_text && f.rich_text[0]) return f.rich_text[0].plain_text;
+      if (f.title     && f.title[0])     return f.title[0].plain_text;
+      return '';
+    }
+
+    var jobTitle    = jTxt('Job Title 1');
+    var postingText = (jTxt('Full Posting') || jTxt('Posting Raw')).slice(0, 3000);
+    var m1Keywords  = (jTxt(F.m1Cleaned) || jTxt(F.m1Raw)).slice(0, 600);
+    var whyItFits   = jTxt(F.finalWhyItFits).slice(0, 500);
+    var m7Score     = jp[F.m7Score]    && jp[F.m7Score].number    != null ? jp[F.m7Score].number    : null;
+    var finalTier   = jp[F.finalTier]  && jp[F.finalTier].select         ? jp[F.finalTier].select.name : '';
+    var roleType    = jp['Role Type']  && jp['Role Type'].select          ? jp['Role Type'].select.name : '';
+
+    // 2 — Load Resume Library modules in parallel (read path uses database ID)
+    var sections = await Promise.all([
+      queryLibSection('Headline',                             6,  NOTION_TOKEN),
+      queryLibSection('Summary',                             4,  NOTION_TOKEN),
+      queryLibSection('Skills',                              4,  NOTION_TOKEN),
+      queryLibSection('Core Competencies',                  16,  NOTION_TOKEN),
+      queryLibSection('Experience Bullet',                  30,  NOTION_TOKEN),
+      queryLibSection('Tools & AI Stack',                    4,  NOTION_TOKEN),
+      queryLibSection('PROFESSIONAL DEVELOPMENT & EDUCATION', 4, NOTION_TOKEN)
+    ]);
+    var headlines  = sections[0];
+    var summaries  = sections[1];
+    var skillsMods = sections[2];
+    var compMods   = sections[3];
+    var bullets    = sections[4];
+    var toolsMods  = sections[5];
+    var pdMods     = sections[6];
+
+    function fmtMods(arr) {
+      return arr.map(function(m, i) {
+        var label = (i + 1) + '.';
+        if (m.employer)   label += ' [' + m.employer + ']';
+        if (m.bulletType) label += ' [' + m.bulletType + ']';
+        if (m.rank)       label += ' [R:' + m.rank + ']';
+        var body = (m.text || m.longVer || m.module || '').slice(0, 350);
+        return label + ' ' + body;
+      }).join('\n');
+    }
+
+    // 3 — Single Claude call: type detection + tailoring + assembly
+    var prompt =
+      'You are a professional resume assembly engine following SOP v3.6 guidelines.\n\n' +
+      'JOB DETAILS:\n' +
+      'Title: ' + jobTitle + '\n' +
+      'Company: ' + companyName + '\n' +
+      'Role Type: ' + roleType + '\n' +
+      'Hybrid Score: ' + (m7Score != null ? m7Score : 'N/A') + '\n' +
+      'Tier: ' + (finalTier || 'N/A') + '\n' +
+      'Keywords from posting:\n' + m1Keywords + '\n' +
+      'Why It Fits:\n' + whyItFits + '\n' +
+      'Posting excerpt:\n' + postingText + '\n\n' +
+      'RESUME LIBRARY MODULES:\n\n' +
+      'HEADLINES (pick 1 — do NOT modify):\n' + fmtMods(headlines) + '\n\n' +
+      'SUMMARIES (pick 1 — tailor by injecting job keywords while preserving voice):\n' + fmtMods(summaries) + '\n\n' +
+      'SKILLS (pick 1 — tailor by injecting keyword-matched skills from the posting):\n' + fmtMods(skillsMods) + '\n\n' +
+      'CORE COMPETENCY POOL (pick 12, arrange in 3 rows of 4, prioritize posting keyword matches):\n' + fmtMods(compMods) + '\n\n' +
+      'EXPERIENCE BULLETS (pick 8–12 most relevant — copy text EXACTLY, never modify a single word):\n' + fmtMods(bullets) + '\n\n' +
+      'TOOLS & AI STACK (pick 1 — tailor lightly to match posting tools):\n' + fmtMods(toolsMods) + '\n\n' +
+      'PROFESSIONAL DEVELOPMENT (pick 1):\n' + fmtMods(pdMods) + '\n\n' +
+      'RESUME TYPE OPTIONS:\n' +
+      '- Product Operations: platform delivery, product roadmap governance, GTM partnership\n' +
+      '- Delivery Operations / Implementation: cross-system delivery, integration scale, client onboarding\n' +
+      '- Systems Leadership: team building, governance, enterprise architecture, org design\n' +
+      '- Zero-to-One / Founder: building in ambiguity, founding-team energy, 0-to-1 ownership\n' +
+      '- Hybrid: blends two focuses for cross-functional or hybrid roles\n\n' +
+      (resumeTypeOverride ? 'USER OVERRIDE: Force resume type = "' + resumeTypeOverride + '".\n\n' : '') +
+      'SOP v3.6 TAILORING RULES — TOP HALF ONLY (experience is never modified):\n' +
+      '• Sub-headline: inject identity keywords from job posting — format: "Title | Specialty Area"\n' +
+      '• Summary: inject functional + domain keywords while preserving the candidate\'s voice\n' +
+      '• Skills: inject skills keywords found in the posting\n' +
+      '• Tools & AI Stack: inject tools/platform keywords from the posting\n' +
+      '• Core Competencies: select 12 from pool, arrange to best surface posting keyword matches\n' +
+      '• Experience bullets: COPY EXACTLY AS STORED — never rewrite, paraphrase, or keyword-stuff\n\n' +
+      'Return ONLY valid JSON (no markdown fences):\n' +
+      '{\n' +
+      '  "resumeType": "...",\n' +
+      '  "resumeTypeRationale": "...",\n' +
+      '  "jobFamily": "...",\n' +
+      '  "headline": "...",\n' +
+      '  "subHeadline": "...",\n' +
+      '  "summary": "...",\n' +
+      '  "skills": ["...", "..."],\n' +
+      '  "competencies": { "row1": ["","","",""], "row2": ["","","",""], "row3": ["","","",""] },\n' +
+      '  "selectedBullets": [ { "text": "...", "employer": "...", "bulletType": "..." } ],\n' +
+      '  "toolsAndAiStack": "...",\n' +
+      '  "professionalDevelopment": "...",\n' +
+      '  "keywordsInjected": ["..."],\n' +
+      '  "tailoringNotes": "..."\n' +
+      '}';
+
+    var aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method:  'POST',
+      headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 6000, messages: [{ role: 'user', content: prompt }] })
+    });
+    if (!aiRes.ok) throw new Error('Claude API: ' + await aiRes.text());
+    var aiData   = await aiRes.json();
+    var rawText  = aiData.content[0].text.trim();
+    var jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Claude returned no JSON block');
+    var assembled = JSON.parse(jsonMatch[0]);
+
+    res.json({ ok: true, jobTitle, companyName, m7Score, finalTier, assembled });
+
+  } catch (err) {
+    console.error('Assembly error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('*', function(req, res) {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
