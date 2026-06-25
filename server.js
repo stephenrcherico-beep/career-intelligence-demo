@@ -10,6 +10,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const JOBS_DB      = '403582a0e82b4e349c300a084f332ad1';
 const COMPANIES_DB = 'b3e93effd284415280a842c6ef5ffc92';
+const RESUME_LIB   = 'd74582b89b3e44de8fcb7437a59dadb1';
 const NOTION_API   = 'https://api.notion.com/v1';
 
 var EM = String.fromCharCode(8212);
@@ -592,6 +593,186 @@ app.post('/api/enrich', async function(req, res) {
 
   } catch (err) {
     console.error('Enrichment error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// -- Story Ingestion Endpoint ------------------------------------------------
+
+app.post('/api/ingest-story', async function(req, res) {
+  var NOTION_TOKEN = process.env.NOTION_TOKEN || '';
+  var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
+  if (!NOTION_TOKEN) return res.status(500).json({ error: 'NOTION_TOKEN not set' });
+  if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' });
+
+  var narrative = (req.body.narrative || '').trim();
+  var employer  = (req.body.employer  || '').trim();
+  var location  = (req.body.location  || '').trim();
+  var startDate = (req.body.startDate || '').trim();
+  var endDate   = (req.body.endDate   || '').trim();
+  var jobTitles = (req.body.jobTitles || '').trim();
+  var empType   = (req.body.employmentType || '').trim();
+  var themes    = (req.body.themes    || '').trim();
+
+  if (!narrative) return res.status(400).json({ error: 'narrative is required' });
+
+  try {
+    var contextBlock = [
+      employer  ? 'Employer: ' + employer  : '',
+      location  ? 'Location: ' + location  : '',
+      startDate ? 'Start: '   + startDate  : '',
+      endDate   ? 'End: '     + endDate    : '',
+      jobTitles ? 'Titles: '  + jobTitles  : '',
+      empType   ? 'Type: '    + empType    : '',
+      themes    ? 'Themes: '  + themes     : ''
+    ].filter(Boolean).join('\n');
+
+    var systemPrompt = 'You are an expert career narrative analyst and resume writer. Return ONLY valid JSON with no markdown, no code fences, no commentary.';
+
+    var userPrompt = 'Analyze this career story and return a single JSON object.\n\n'
+      + 'STORY:\n' + narrative
+      + (contextBlock ? '\n\nCONTEXT:\n' + contextBlock : '')
+      + '\n\nReturn this exact JSON structure:\n'
+      + '{\n'
+      + '  "storyTitle": "concise title for this story (include employer if known)",\n'
+      + '  "storyType": "achievement|job_story|professional_summary",\n'
+      + '  "detectedSeniority": "Junior|Mid|Senior|Lead|Director|VP|C-Suite",\n'
+      + '  "detectedEmployer": "employer extracted from story/context, empty string if unknown",\n'
+      + '  "metadata": {\n'
+      + '    "keywords": ["8 to 15 keywords"],\n'
+      + '    "jobFamilies": ["1-3 from: Implementation, Systems Leadership, TPM, Product Ops, Delivery, Onboarding/CS, Operations, Hybrid, Stories"],\n'
+      + '    "themes": ["2-5 themes"],\n'
+      + '    "impactMetrics": ["metrics with numbers from the story"],\n'
+      + '    "senioritySignals": ["signals that indicate seniority"]\n'
+      + '  },\n'
+      + '  "versions": {\n'
+      + '    "long": "full narrative verbatim or lightly cleaned",\n'
+      + '    "medium": "condensed 2-3 paragraph version: context + key actions + outcomes",\n'
+      + '    "short": "2-3 sentence executive summary"\n'
+      + '  },\n'
+      + '  "sourceBullets": "Led X\\nBuilt Y\\nDrove Z (newline separated, 3-5 raw bullets)",\n'
+      + '  "bullets": [\n'
+      + '    {\n'
+      + '      "text": "Resume bullet starting with past-tense action verb",\n'
+      + '      "bulletType": "one of: TPM, Implementation, Product Ops, Delivery, Operations, Project Manager, Systems Leadership",\n'
+      + '      "rankScore": 85,\n'
+      + '      "jobFamilies": ["1-2 from exact list"],\n'
+      + '      "keywords": ["2-4 keywords"]\n'
+      + '    }\n'
+      + '  ],\n'
+      + '  "scores": { "clarity": 80, "impact": 75, "measurability": 70, "seniority": 80, "strength": 76 }\n'
+      + '}\n'
+      + 'Rules:\n'
+      + '- jobFamilies EXACT from: Implementation, Systems Leadership, TPM, Product Ops, Delivery, Onboarding/CS, Operations, Hybrid, Stories\n'
+      + '- bulletType EXACT from: TPM, Implementation, Product Ops, Delivery, Operations, Project Manager, Systems Leadership\n'
+      + '- Generate 5 to 8 bullets\n'
+      + '- NEVER fabricate metrics not in the original story\n'
+      + '- Return ONLY the JSON object';
+
+    var claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+    if (!claudeRes.ok) {
+      var err = await claudeRes.text();
+      throw new Error('Claude API error: ' + err);
+    }
+    var claudeData = await claudeRes.json();
+    var rawJson = claudeData.content[0].text.trim()
+      .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    var extracted = JSON.parse(rawJson);
+
+    console.log('Ingestion extracted:', extracted.storyTitle, '| bullets:', (extracted.bullets || []).length);
+
+    var resolvedEmployer = employer || extracted.detectedEmployer || 'Other';
+    var jobFamilies = (extracted.metadata && extracted.metadata.jobFamilies) || [];
+    var keywords    = ((extracted.metadata && extracted.metadata.keywords) || []).join(', ');
+    var notesParts  = [];
+    if (extracted.metadata && extracted.metadata.themes && extracted.metadata.themes.length)
+      notesParts.push('Themes: ' + extracted.metadata.themes.join(', '));
+    if (extracted.metadata && extracted.metadata.impactMetrics && extracted.metadata.impactMetrics.length)
+      notesParts.push('Metrics: ' + extracted.metadata.impactMetrics.join(', '));
+    if (extracted.metadata && extracted.metadata.senioritySignals && extracted.metadata.senioritySignals.length)
+      notesParts.push('Seniority signals: ' + extracted.metadata.senioritySignals.join(', '));
+    if (extracted.detectedSeniority)
+      notesParts.push('Detected level: ' + extracted.detectedSeniority);
+    var notes = notesParts.join('\n');
+
+    var storyProps = {
+      'Module':         { title: rt(extracted.storyTitle || 'Story') },
+      'Section':        { select: { name: 'Story' } },
+      'Job Family':     { multi_select: jobFamilies.map(function(j) { return { name: j }; }) },
+      'Long Version':   { rich_text: rtLong((extracted.versions && extracted.versions.long)   || narrative) },
+      'Medium Version': { rich_text: rtLong((extracted.versions && extracted.versions.medium) || '') },
+      'Short Version':  { rich_text: rt((extracted.versions    && extracted.versions.short)   || '') },
+      'Source Bullets': { rich_text: rtLong(extracted.sourceBullets || '') },
+      'Keywords':       { rich_text: rt(keywords) },
+      'Notes':          { rich_text: rtLong(notes) },
+      'Batch ID':       { rich_text: rt('ingest-' + new Date().toISOString().slice(0, 10)) }
+    };
+    if (resolvedEmployer) storyProps['Employer'] = { select: { name: resolvedEmployer } };
+
+    var storyPage = await notionRequest('POST', '/pages', {
+      parent: { database_id: RESUME_LIB },
+      properties: storyProps
+    }, NOTION_TOKEN);
+
+    var bullets = extracted.bullets || [];
+    var writtenBullets = 0;
+    for (var i = 0; i < bullets.length; i++) {
+      var b = bullets[i];
+      if (!b.text) continue;
+      var bulletProps = {
+        'Module':      { title: rt(b.text) },
+        'Text':        { rich_text: rt(b.text) },
+        'Section':     { select: { name: 'Experience Bullet' } },
+        'Bullet Type': { select: { name: b.bulletType || 'Operations' } },
+        'Job Family':  { multi_select: (b.jobFamilies || []).map(function(j) { return { name: j }; }) },
+        'Keywords':    { rich_text: rt((b.keywords || []).join(', ')) },
+        'Rank':        { number: b.rankScore || 50 },
+        'Batch ID':    { rich_text: rt('ingest-' + new Date().toISOString().slice(0, 10)) }
+      };
+      if (resolvedEmployer) bulletProps['Employer'] = { select: { name: resolvedEmployer } };
+      await notionRequest('POST', '/pages', {
+        parent: { database_id: RESUME_LIB },
+        properties: bulletProps
+      }, NOTION_TOKEN);
+      writtenBullets++;
+    }
+
+    console.log('Ingestion complete: story written + ' + writtenBullets + ' bullets');
+
+    res.json({
+      ok: true,
+      storyTitle:     extracted.storyTitle,
+      storyType:      extracted.storyType,
+      seniority:      extracted.detectedSeniority,
+      employer:       resolvedEmployer,
+      jobFamilies:    jobFamilies,
+      keywords:       (extracted.metadata && extracted.metadata.keywords) || [],
+      bulletsCount:   writtenBullets,
+      bullets:        bullets,
+      versions: {
+        short:  (extracted.versions && extracted.versions.short)  || '',
+        medium: (extracted.versions && extracted.versions.medium) || ''
+      },
+      scores:         extracted.scores || {},
+      notionStoryUrl: 'https://notion.so/' + storyPage.id.replace(/-/g, '')
+    });
+
+  } catch (err) {
+    console.error('Ingestion error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
