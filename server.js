@@ -785,8 +785,8 @@ app.post('/api/ingest-story', async function(req, res) {
 
 app.post('/api/search-jobs', async function(req, res) {
   try {
-    var companyName  = (req.body.companyName || '').trim();
-    if (!companyName) return res.status(400).json({ error: 'companyName required' });
+    var jobTitle     = (req.body.jobTitle || req.body.companyName || '').trim();
+    if (!jobTitle) return res.status(400).json({ error: 'jobTitle required' });
     var NOTION_TOKEN = process.env.NOTION_TOKEN;
 
     // Query Jobs DB — no filter or sort to avoid invalid_request_url;
@@ -795,18 +795,20 @@ app.post('/api/search-jobs', async function(req, res) {
     // Use /search and filter by parent — Notion v2025-09-03 returns
     // parent.type === "data_source" with parent.data_source_id for collection rows.
     var r = await notionRequest('POST', '/search', {
-      query:  companyName,
+      query:  jobTitle,
       filter: { value: 'page', property: 'object' },
       page_size: 20
     }, NOTION_TOKEN);
 
-    var nameLower   = companyName.toLowerCase();
+    var nameLower   = jobTitle.toLowerCase();
 
-    // Identify job postings by their unique properties instead of parent ID
-    // (Notion v2025-09-03 returns unpredictable parent types for collection rows)
+    // Identify job postings by their unique properties instead of parent ID.
+    // Accept any page that has the Module 7 score OR Company Name (Text) field —
+    // those only exist on job posting rows, not on company enrichment pages.
     var pages = (r.results || []).filter(function(page) {
       if (!page.properties) return false;
-      return !!(page.properties['Job Title 1'] && page.properties['Company Name (Text)']);
+      var props = page.properties;
+      return !!(props['Company Name (Text)'] || props[F.m7Score] || props['Job Title 1']);
     });
 
     var jobs = pages.map(function(page) {
@@ -831,17 +833,7 @@ app.post('/api/search-jobs', async function(req, res) {
     });
 
     if (jobs.length === 0) {
-      var first = (r.results||[])[0] || {};
-      var dbg = {
-        searchCount: (r.results||[]).length,
-        matched: pages.length,
-        firstId: first.id,
-        firstObject: first.object,
-        firstParent: first.parent,
-        hasProperties: !!(first.properties),
-        propKeys: first.properties ? Object.keys(first.properties).slice(0,5) : []
-      };
-      return res.status(404).json({ error: 'No analyzed jobs found for "' + companyName + '".', debug: dbg });
+      return res.status(404).json({ error: 'No analyzed jobs found for "' + jobTitle + '". Run the Job Posting Analyzer first, then retry.' });
     }
 
     res.json({ ok: true, jobs });
