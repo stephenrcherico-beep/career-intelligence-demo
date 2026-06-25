@@ -791,23 +791,27 @@ app.post('/api/search-jobs', async function(req, res) {
 
     // Query Jobs DB — no filter or sort to avoid invalid_request_url;
     // filter client-side by company name
-    var r = await notionRequest('POST', '/databases/' + JOBS_DB_COL + '/query', {
-      page_size: 100
+    // /databases/{id}/query fails for this collection-backed DB.
+    // Use /search and filter by parent — Notion v2025-09-03 returns
+    // parent.type === "data_source" with parent.data_source_id for collection rows.
+    var r = await notionRequest('POST', '/search', {
+      query:  companyName,
+      filter: { value: 'page', property: 'object' },
+      page_size: 20
     }, NOTION_TOKEN);
 
-    var nameLower = companyName.toLowerCase();
+    var nameLower   = companyName.toLowerCase();
+    var jobsDbNorm  = JOBS_DB.replace(/-/g, '');
+    var jobsColNorm = JOBS_DB_COL.replace(/-/g, '');
+
     var pages = (r.results || []).filter(function(page) {
-      var jp = page.properties;
-      function txt(field) {
-        var f = jp[field];
-        if (!f) return '';
-        if (f.rich_text && f.rich_text[0]) return f.rich_text[0].plain_text;
-        if (f.title     && f.title[0])     return f.title[0].plain_text;
-        return '';
-      }
-      var co    = txt('Company Name (Text)').toLowerCase();
-      var title = txt('Job Title 1').toLowerCase();
-      return co.includes(nameLower) || title.includes(nameLower);
+      var p = page.parent;
+      if (!p) return false;
+      // Notion v2025-09-03 returns parent.data_source_id for collection-backed rows
+      var ids = [p.database_id, p.data_source_id, p.block_id]
+        .map(function(id) { return (id || '').replace(/-/g, ''); })
+        .filter(Boolean);
+      return ids.indexOf(jobsDbNorm) !== -1 || ids.indexOf(jobsColNorm) !== -1;
     });
 
     var jobs = pages.map(function(page) {
