@@ -1018,11 +1018,11 @@
     <div id="ra-form-area">
       <div class="ra-input-row">
         <input type="text" id="ra-company" class="ra-input"
-               placeholder="Company name (e.g. Dell, Softbank, Maven Clinic)"
+               placeholder="Job title keyword (e.g. Director, Product Operations, VP Customer)"
                onkeydown="if(event.key==='Enter') searchJobs()" />
         <button class="ra-btn" id="ra-search-btn" onclick="searchJobs()">Search &#8594;</button>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin:0 0 4px;">Run the Job Posting Analyzer first. Search finds all analyzed postings for that company.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 4px;">Enter part of the job title. Search finds analyzed postings whose title matches — pick one to build a resume.</p>
 
       <!-- Step 2 — Job picker (hidden until search returns results) -->
       <div id="ra-job-picker" style="display:none">
@@ -1689,7 +1689,7 @@ function raSetStage(n, state) {
 
 async function searchJobs() {
   var company = (document.getElementById('ra-company').value || '').trim();
-  if (!company) { alert('Enter a company name.'); return; }
+  if (!company) { alert('Enter a job title keyword.'); return; }
   var btn = document.getElementById('ra-search-btn');
   btn.disabled = true;
   btn.textContent = 'Searching…';
@@ -1700,11 +1700,11 @@ async function searchJobs() {
     var resp = await fetch('/api/search-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyName: company })
+      body: JSON.stringify({ jobTitle: company })
     });
     var data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || 'Search failed');
-    if (!data.jobs || data.jobs.length === 0) throw new Error('No analyzed jobs found for "' + company + '". Run the Job Posting Analyzer first.');
+    if (!data.jobs || data.jobs.length === 0) throw new Error('No matching jobs found for "' + company + '". Try a different keyword or run the Job Posting Analyzer first.');
 
     raSelectedJobId = null;
     document.getElementById('ra-assemble-btn').disabled = true;
@@ -1723,7 +1723,11 @@ async function searchJobs() {
         '<input type="radio" class="ra-job-item-radio" name="ra-job-radio" />' +
         '<div class="ra-job-item-body">' +
           '<div class="ra-job-item-title">' + (job.jobTitle || '(Untitled)') + '</div>' +
-          '<div class="ra-job-item-meta">'  + metaParts.join(' &nbsp;&middot;&nbsp; ') + '</div>' +
+          '<div class="ra-job-item-meta">' +
+            (job.company ? '<strong>' + job.company + '</strong>' : '') +
+            (job.company && metaParts.length ? ' &nbsp;&middot;&nbsp; ' : '') +
+            metaParts.join(' &nbsp;&middot;&nbsp; ') +
+          '</div>' +
         '</div>' +
         (job.score != null ? '<div class="ra-job-item-score">' + job.score + '</div>' : '');
       item.addEventListener('click', function() {
