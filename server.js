@@ -47,7 +47,7 @@ function notionHeaders(token) {
   return {
     'Authorization': 'Bearer ' + token,
     'Content-Type': 'application/json',
-    'Notion-Version': '2022-06-28'
+    'Notion-Version': '2025-09-03'
   };
 }
 
