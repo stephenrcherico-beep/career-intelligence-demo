@@ -788,13 +788,21 @@ app.post('/api/search-jobs', async function(req, res) {
     if (!companyName) return res.status(400).json({ error: 'companyName required' });
     var NOTION_TOKEN = process.env.NOTION_TOKEN;
 
-    var r = await notionRequest('POST', '/databases/' + JOBS_DB + '/query', {
-      filter: { property: 'Company Name (Text)', rich_text: { contains: companyName } },
-      sorts:  [{ property: 'Date Evaluated', direction: 'descending' }],
-      page_size: 10
+    // Use /search (more reliable than /databases/{id}/query for this DB)
+    var r = await notionRequest('POST', '/search', {
+      query:  companyName,
+      filter: { value: 'page', property: 'object' },
+      page_size: 20
     }, NOTION_TOKEN);
 
-    var jobs = (r.results || []).map(function(page) {
+    // Keep only pages whose parent is the Jobs DB
+    var jobsDbNorm = JOBS_DB.replace(/-/g, '');
+    var pages = (r.results || []).filter(function(page) {
+      if (!page.parent || page.parent.type !== 'database_id') return false;
+      return page.parent.database_id.replace(/-/g, '') === jobsDbNorm;
+    });
+
+    var jobs = pages.map(function(page) {
       var jp = page.properties;
       function jTxt(field) {
         var f = jp[field];
@@ -814,6 +822,10 @@ app.post('/api/search-jobs', async function(req, res) {
         notionUrl: 'https://notion.so/' + page.id.replace(/-/g, '')
       };
     });
+
+    if (jobs.length === 0) {
+      return res.status(404).json({ error: 'No analyzed jobs found for "' + companyName + '". Run the Job Posting Analyzer first.' });
+    }
 
     res.json({ ok: true, jobs });
   } catch (err) {
