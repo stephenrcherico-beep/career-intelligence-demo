@@ -10,7 +10,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const JOBS_DB      = '403582a0e82b4e349c300a084f332ad1';
 const COMPANIES_DB = 'b3e93effd284415280a842c6ef5ffc92';
-const RESUME_LIB   = 'ef9a489f9bb14ebfb66503b31993cc47'; // collection ID - bypasses multi-source wrapper
+const RESUME_LIB   = 'd74582b89b3e44de8fcb7437a59dadb1';
+const RESUME_LIB_SRC = 'collection://ef9a489f-9bb1-4ebf-b665-03b31993cc47';
 const NOTION_API   = 'https://api.notion.com/v1';
 
 var EM = String.fromCharCode(8212);
@@ -724,7 +725,7 @@ app.post('/api/ingest-story', async function(req, res) {
     if (resolvedEmployer) storyProps['Employer'] = { select: { name: resolvedEmployer } };
 
     var storyPage = await notionRequest('POST', '/pages', {
-      parent: { database_id: RESUME_LIB },
+      parent: { database_id: RESUME_LIB, data_source_url: RESUME_LIB_SRC },
       properties: storyProps
     }, NOTION_TOKEN);
 
@@ -745,7 +746,7 @@ app.post('/api/ingest-story', async function(req, res) {
       };
       if (resolvedEmployer) bulletProps['Employer'] = { select: { name: resolvedEmployer } };
       await notionRequest('POST', '/pages', {
-        parent: { database_id: RESUME_LIB },
+        parent: { database_id: RESUME_LIB, data_source_url: RESUME_LIB_SRC },
         properties: bulletProps
       }, NOTION_TOKEN);
       writtenBullets++;
