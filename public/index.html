@@ -565,6 +565,69 @@
     .cip-tab-btn { padding: 12px 12px; font-size: 12px; }
   }
 
+
+  /* ── Resume Assembly Engine ─────────────────────────────────────────────── */
+  .ra-wrap { max-width: 900px; margin: 0 auto; padding: 40px 40px 80px; }
+  .ra-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 36px 40px; }
+  .ra-header h3 { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
+  .ra-header p  { font-size: 13px; color: var(--text-secondary); margin: 0 0 24px; }
+  .ra-input-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 16px; }
+  .ra-input { flex: 1; padding: 11px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 14px; color: var(--text-primary); background: var(--cream); }
+  .ra-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,168,75,0.12); }
+  .ra-select { padding: 11px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px; color: var(--text-secondary); background: var(--cream); min-width: 190px; }
+  .ra-btn { padding: 11px 22px; background: var(--navy); color: var(--white); border: none; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.18s; }
+  .ra-btn:hover { background: var(--navy-mid); }
+  .ra-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* pipeline */
+  .ra-pipeline { margin: 24px 0; padding: 20px; background: var(--cream); border-radius: 10px; }
+  .ra-pipeline-header { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .ra-stage { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; color: var(--text-muted); border-bottom: 1px solid rgba(15,30,53,0.06); }
+  .ra-stage:last-child { border-bottom: none; }
+  .ra-stage.active { color: var(--navy); font-weight: 600; }
+  .ra-stage.done   { color: var(--success); }
+  .ra-stage-icon { font-size: 14px; width: 18px; text-align: center; }
+  /* preview */
+  .ra-preview { margin-top: 28px; }
+  .ra-type-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .ra-type-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; background: var(--navy); color: var(--gold); font-size: 12px; font-weight: 600; border-radius: 20px; letter-spacing: 0.04em; }
+  .ra-tier-chip { padding: 5px 12px; background: var(--success-bg); color: var(--success); font-size: 12px; font-weight: 600; border-radius: 20px; border: 1px solid rgba(26,122,74,0.2); }
+  .ra-rationale { font-size: 13px; color: var(--text-secondary); font-style: italic; }
+  .ra-resume-card { border: 1px solid var(--border-gold); border-radius: 12px; overflow: hidden; }
+  .ra-resume-header { background: var(--navy); padding: 24px 28px; }
+  .ra-resume-headline { font-family: "DM Serif Display", serif; font-size: 20px; color: var(--white); margin: 0 0 6px; }
+  .ra-resume-subhead  { font-size: 14px; color: var(--gold-light); font-weight: 500; margin: 0 0 10px; }
+  .ra-resume-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ra-resume-tag { font-size: 11px; color: rgba(255,255,255,0.55); border: 1px solid rgba(200,168,75,0.25); border-radius: 12px; padding: 2px 10px; }
+  .ra-section { padding: 20px 28px; border-bottom: 1px solid var(--border); }
+  .ra-section:last-child { border-bottom: none; }
+  .ra-section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 10px; }
+  .ra-section-text  { font-size: 13px; color: var(--text-primary); line-height: 1.65; }
+  .ra-skills-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ra-skill-chip { font-size: 12px; padding: 4px 10px; background: var(--cream); border: 1px solid var(--border); border-radius: 12px; color: var(--text-primary); }
+  .ra-comp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; }
+  .ra-comp-item { font-size: 12px; padding: 6px 10px; background: var(--cream-dark); border-radius: 6px; text-align: center; color: var(--text-primary); }
+  .ra-bullet-list { list-style: none; padding: 0; margin: 0; }
+  .ra-bullet-item { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(15,30,53,0.05); font-size: 13px; color: var(--text-primary); line-height: 1.5; }
+  .ra-bullet-item:last-child { border-bottom: none; }
+  .ra-bullet-dot { color: var(--gold); font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .ra-bullet-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .ra-kw-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ra-kw-chip { font-size: 11px; padding: 3px 9px; background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.3); border-radius: 10px; color: var(--gold-dim); }
+  .ra-notes-box { background: var(--cream); border-left: 3px solid var(--gold); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-top: 16px; }
+  .ra-cowork-btn { display: block; width: 100%; margin-top: 20px; padding: 13px; background: var(--cream); border: 1px dashed var(--border-gold); border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--gold-dim); cursor: pointer; text-align: center; transition: background 0.18s; }
+  .ra-cowork-btn:hover { background: rgba(200,168,75,0.08); }
+  .ra-error-box { background: var(--error-bg); border: 1px solid rgba(185,28,28,0.2); border-radius: 10px; padding: 16px 20px; color: var(--error); font-size: 13px; margin-top: 20px; }
+  .ra-reset-btn { margin-top: 20px; padding: 10px 20px; background: none; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+  .ra-reset-btn:hover { background: var(--cream); }
+  @media (max-width: 600px) {
+    .ra-wrap { padding: 20px 16px 60px; }
+    .ra-card { padding: 24px 20px; }
+    .ra-input-row { flex-direction: column; }
+    .ra-comp-grid { grid-template-columns: 1fr 1fr; }
+    .ra-resume-header { padding: 18px 20px; }
+    .ra-section { padding: 16px 20px; }
+  }
+
 </style>
 </head>
 <body>
@@ -591,6 +654,9 @@
     </button>
     <button class="cip-tab-btn" data-tab="distiller" onclick="switchTab('distiller')">
       <span class="cip-tab-icon">&#10024;</span> Career Life Distiller
+    </button>
+    <button class="cip-tab-btn" data-tab="assembly" onclick="switchTab('assembly')">
+      <span class="cip-tab-icon">&#128196;</span> Resume Assembly
     </button>
   </div>
 </nav>
@@ -925,7 +991,113 @@
   </div>
 </section>
 
+
 </div><!-- /tab-distiller -->
+
+<!-- ── Tab Panel 3: Resume Assembly ────────────────────────────────────────── -->
+<div class="cip-tab-panel" id="tab-assembly">
+<section class="ra-wrap">
+  <div class="ra-card">
+    <div class="ra-header">
+      <h3>Resume Assembly Engine</h3>
+      <p>Enter a company you've already analyzed &mdash; the engine finds the job record, loads your Modular Resume Library, and assembles a tailored resume preview following SOP v3.6 rules.</p>
+    </div>
+
+    <!-- Input -->
+    <div id="ra-form-area">
+      <div class="ra-input-row">
+        <input type="text" id="ra-company" class="ra-input"
+               placeholder="Company name (e.g. Dell, Softbank, Maven Clinic)"
+               onkeydown="if(event.key==='Enter') startAssembly()" />
+        <select id="ra-type-override" class="ra-select">
+          <option value="">Auto-detect resume type</option>
+          <option value="Product Operations">Product Operations</option>
+          <option value="Delivery Operations / Implementation">Delivery / Implementation</option>
+          <option value="Systems Leadership">Systems Leadership</option>
+          <option value="Zero-to-One / Founder">Zero-to-One / Founder</option>
+          <option value="Hybrid">Hybrid</option>
+        </select>
+        <button class="ra-btn" id="ra-btn" onclick="startAssembly()">Assemble &#8594;</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:0;">Run the Job Posting Analyzer first. The assembly engine reads from your analyzed Notion records.</p>
+    </div>
+
+    <!-- Pipeline -->
+    <div id="ra-pipeline" style="display:none">
+      <div class="ra-pipeline">
+        <div class="ra-pipeline-header"><span id="ra-spin">&#9679;</span>&nbsp;Assembling resume&hellip;</div>
+        <div class="ra-stage" id="ra-s1"><span class="ra-stage-icon" id="ra-i1">&#9675;</span> Finding job record in Notion</div>
+        <div class="ra-stage" id="ra-s2"><span class="ra-stage-icon" id="ra-i2">&#9675;</span> Loading Resume Library modules</div>
+        <div class="ra-stage" id="ra-s3"><span class="ra-stage-icon" id="ra-i3">&#9675;</span> Analyzing keywords &amp; role type</div>
+        <div class="ra-stage" id="ra-s4"><span class="ra-stage-icon" id="ra-i4">&#9675;</span> Running tailoring engine (SOP v3.6)</div>
+        <div class="ra-stage" id="ra-s5"><span class="ra-stage-icon" id="ra-i5">&#9675;</span> Assembling resume preview</div>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div id="ra-preview" style="display:none">
+      <div class="ra-preview">
+        <div class="ra-type-row">
+          <span class="ra-type-chip" id="ra-type-chip"></span>
+          <span class="ra-tier-chip" id="ra-tier-chip"></span>
+          <span class="ra-rationale" id="ra-rationale"></span>
+        </div>
+
+        <div class="ra-resume-card">
+          <!-- Header block -->
+          <div class="ra-resume-header">
+            <div class="ra-resume-headline" id="ra-headline"></div>
+            <div class="ra-resume-subhead"  id="ra-subhead"></div>
+            <div class="ra-resume-tags"     id="ra-kw-tags"></div>
+          </div>
+          <!-- Summary -->
+          <div class="ra-section">
+            <div class="ra-section-label">Professional Summary</div>
+            <div class="ra-section-text" id="ra-summary"></div>
+          </div>
+          <!-- Skills -->
+          <div class="ra-section">
+            <div class="ra-section-label">Skills</div>
+            <div class="ra-skills-wrap" id="ra-skills"></div>
+          </div>
+          <!-- Core Competencies -->
+          <div class="ra-section">
+            <div class="ra-section-label">Core Competencies</div>
+            <div id="ra-competencies"></div>
+          </div>
+          <!-- Experience Bullets -->
+          <div class="ra-section">
+            <div class="ra-section-label">Experience Highlights</div>
+            <ul class="ra-bullet-list" id="ra-bullets"></ul>
+          </div>
+          <!-- Tools -->
+          <div class="ra-section">
+            <div class="ra-section-label">Tools &amp; AI Stack</div>
+            <div class="ra-section-text" id="ra-tools"></div>
+          </div>
+          <!-- PD -->
+          <div class="ra-section">
+            <div class="ra-section-label">Professional Development</div>
+            <div class="ra-section-text" id="ra-pd"></div>
+          </div>
+        </div>
+
+        <div class="ra-notes-box" id="ra-notes"></div>
+
+        <button class="ra-cowork-btn" onclick="copyCoworkPrompt()" id="ra-cowork-btn">
+          &#128196; Build Full .docx &mdash; Copy Cowork Prompt
+        </button>
+
+        <button class="ra-reset-btn" onclick="resetAssembly()">Assemble Another</button>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="ra-error" style="display:none" class="ra-error-box"></div>
+  </div>
+</section>
+</div><!-- /tab-assembly -->
+
 
 <footer>
   Built by <a href="https://www.notion.so/d982b19992bb4628813962b9bb59a622">Stephen R. Cherico</a> &nbsp;·&nbsp; Career Intelligence Platform demo &nbsp;·&nbsp; Powered by Claude + Notion &nbsp;·&nbsp; 2026
@@ -1477,6 +1649,168 @@ function switchTab(id) {
     p.classList.toggle('active', p.id === 'tab-' + id);
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+
+
+<script>
+var raAssembled = null;
+var raJobTitle  = '';
+var raCompany   = '';
+
+function raSetStage(n, state) {
+  var el = document.getElementById('ra-s' + n);
+  var ic = document.getElementById('ra-i' + n);
+  if (!el || !ic) return;
+  el.className = 'ra-stage' + (state ? ' ' + state : '');
+  ic.innerHTML = state === 'done' ? '&#10003;' : state === 'active' ? '&#9679;' : '&#9675;';
+}
+
+async function startAssembly() {
+  var company  = (document.getElementById('ra-company').value || '').trim();
+  var override = document.getElementById('ra-type-override').value;
+  if (!company) { alert('Enter a company name.'); return; }
+
+  raCompany  = company;
+  raAssembled = null;
+  document.getElementById('ra-form-area').style.display = 'none';
+  document.getElementById('ra-preview').style.display   = 'none';
+  document.getElementById('ra-error').style.display     = 'none';
+  document.getElementById('ra-pipeline').style.display  = 'block';
+  [1,2,3,4,5].forEach(function(i){ raSetStage(i, ''); });
+
+  // Animate stages progressively
+  var delays = [0, 600, 1200, 1900, 2800];
+  delays.forEach(function(d, idx){ setTimeout(function(){ raSetStage(idx+1,'active'); }, d); });
+
+  try {
+    var resp = await fetch('/api/assemble-resume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyName: company, resumeTypeOverride: override })
+    });
+    var data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || 'Assembly failed');
+
+    [1,2,3,4,5].forEach(function(i){ raSetStage(i,'done'); });
+    await new Promise(function(r){ setTimeout(r, 400); });
+
+    raJobTitle  = data.jobTitle || company;
+    raAssembled = data.assembled;
+    showAssemblyPreview(data);
+  } catch (err) {
+    [1,2,3,4,5].forEach(function(i){ raSetStage(i,''); });
+    document.getElementById('ra-pipeline').style.display = 'none';
+    document.getElementById('ra-error').style.display    = 'block';
+    document.getElementById('ra-error').textContent      = 'Error: ' + err.message;
+    document.getElementById('ra-form-area').style.display = 'block';
+  }
+}
+
+function showAssemblyPreview(data) {
+  var a = data.assembled;
+  document.getElementById('ra-pipeline').style.display = 'none';
+  document.getElementById('ra-preview').style.display  = 'block';
+
+  // Type + tier chips
+  document.getElementById('ra-type-chip').textContent = a.resumeType || '';
+  var tierEl = document.getElementById('ra-tier-chip');
+  tierEl.textContent = data.finalTier ? data.finalTier + (data.m7Score ? '  ·  ' + data.m7Score + ' pts' : '') : '';
+  tierEl.style.display = data.finalTier ? '' : 'none';
+  document.getElementById('ra-rationale').textContent = a.resumeTypeRationale || '';
+
+  // Resume header
+  document.getElementById('ra-headline').textContent = a.headline || '';
+  document.getElementById('ra-subhead').textContent  = a.subHeadline || '';
+
+  // Keyword tags from injected keywords
+  var tagWrap = document.getElementById('ra-kw-tags');
+  tagWrap.innerHTML = '';
+  (a.keywordsInjected || []).slice(0, 6).forEach(function(kw) {
+    var span = document.createElement('span');
+    span.className = 'ra-resume-tag';
+    span.textContent = kw;
+    tagWrap.appendChild(span);
+  });
+
+  // Summary
+  document.getElementById('ra-summary').textContent = a.summary || '';
+
+  // Skills
+  var skillsWrap = document.getElementById('ra-skills');
+  skillsWrap.innerHTML = '';
+  (a.skills || []).forEach(function(s) {
+    var chip = document.createElement('span');
+    chip.className = 'ra-skill-chip';
+    chip.textContent = s;
+    skillsWrap.appendChild(chip);
+  });
+
+  // Core Competencies
+  var compWrap = document.getElementById('ra-competencies');
+  compWrap.innerHTML = '';
+  var comp = a.competencies || {};
+  ['row1','row2','row3'].forEach(function(row) {
+    var grid = document.createElement('div');
+    grid.className = 'ra-comp-grid';
+    grid.style.marginBottom = '6px';
+    (comp[row] || []).forEach(function(item) {
+      var cell = document.createElement('div');
+      cell.className = 'ra-comp-item';
+      cell.textContent = item;
+      grid.appendChild(cell);
+    });
+    compWrap.appendChild(grid);
+  });
+
+  // Experience Bullets
+  var bulletList = document.getElementById('ra-bullets');
+  bulletList.innerHTML = '';
+  (a.selectedBullets || []).forEach(function(b) {
+    var li   = document.createElement('li');
+    li.className = 'ra-bullet-item';
+    var dot  = document.createElement('span');
+    dot.className = 'ra-bullet-dot';
+    dot.innerHTML = '&bull;';
+    var body = document.createElement('div');
+    var txt  = document.createElement('div');
+    txt.textContent = b.text || '';
+    var meta = document.createElement('div');
+    meta.className = 'ra-bullet-meta';
+    meta.textContent = [b.employer, b.bulletType].filter(Boolean).join(' · ');
+    body.appendChild(txt);
+    if (meta.textContent) body.appendChild(meta);
+    li.appendChild(dot);
+    li.appendChild(body);
+    bulletList.appendChild(li);
+  });
+
+  // Tools + PD
+  document.getElementById('ra-tools').textContent = a.toolsAndAiStack        || '';
+  document.getElementById('ra-pd').textContent    = a.professionalDevelopment || '';
+
+  // Notes
+  document.getElementById('ra-notes').textContent = a.tailoringNotes || '';
+}
+
+function copyCoworkPrompt() {
+  if (!raAssembled) return;
+  var prompt = 'Build a resume for ' + raJobTitle + ' at ' + raCompany + '. Resume type: ' + raAssembled.resumeType + '. Job family: ' + raAssembled.jobFamily + '.';
+  navigator.clipboard.writeText(prompt).then(function() {
+    var btn = document.getElementById('ra-cowork-btn');
+    btn.textContent = '✓ Copied! Paste into a Cowork session to build the .docx';
+    setTimeout(function(){ btn.innerHTML = '&#128196; Build Full .docx &mdash; Copy Cowork Prompt'; }, 3000);
+  });
+}
+
+function resetAssembly() {
+  document.getElementById('ra-company').value = '';
+  document.getElementById('ra-type-override').value = '';
+  document.getElementById('ra-preview').style.display  = 'none';
+  document.getElementById('ra-pipeline').style.display = 'none';
+  document.getElementById('ra-error').style.display    = 'none';
+  document.getElementById('ra-form-area').style.display = 'block';
+  raAssembled = null;
 }
 </script>
 
