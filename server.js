@@ -831,8 +831,17 @@ app.post('/api/search-jobs', async function(req, res) {
     });
 
     if (jobs.length === 0) {
-      var dbg = ' [search=' + (r.results||[]).length + ' matched=' + pages.length + ']';
-      return res.status(404).json({ error: 'No analyzed jobs found for "' + companyName + '".' + dbg + ' Run the Job Posting Analyzer first.' });
+      var first = (r.results||[])[0] || {};
+      var dbg = {
+        searchCount: (r.results||[]).length,
+        matched: pages.length,
+        firstId: first.id,
+        firstObject: first.object,
+        firstParent: first.parent,
+        hasProperties: !!(first.properties),
+        propKeys: first.properties ? Object.keys(first.properties).slice(0,5) : []
+      };
+      return res.status(404).json({ error: 'No analyzed jobs found for "' + companyName + '".', debug: dbg });
     }
 
     res.json({ ok: true, jobs });
