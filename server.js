@@ -10,7 +10,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const JOBS_DB      = '403582a0e82b4e349c300a084f332ad1';
 const COMPANIES_DB = 'b3e93effd284415280a842c6ef5ffc92';
-const RESUME_LIB   = 'd74582b89b3e44de8fcb7437a59dadb1';
+const RESUME_LIB   = 'ef9a489f9bb14ebfb66503b31993cc47'; // collection ID - bypasses multi-source wrapper
 const NOTION_API   = 'https://api.notion.com/v1';
 
 var EM = String.fromCharCode(8212);
