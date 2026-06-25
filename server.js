@@ -779,6 +779,49 @@ app.post('/api/ingest-story', async function(req, res) {
 });
 
 
+
+// ── Job Search (for Resume Assembly picker) ────────────────────────────────
+
+app.post('/api/search-jobs', async function(req, res) {
+  try {
+    var companyName  = (req.body.companyName || '').trim();
+    if (!companyName) return res.status(400).json({ error: 'companyName required' });
+    var NOTION_TOKEN = process.env.NOTION_TOKEN;
+
+    var r = await notionRequest('POST', '/databases/' + JOBS_DB + '/query', {
+      filter: { property: 'Company Name (Text)', rich_text: { contains: companyName } },
+      sorts:  [{ property: 'Date Evaluated', direction: 'descending' }],
+      page_size: 10
+    }, NOTION_TOKEN);
+
+    var jobs = (r.results || []).map(function(page) {
+      var jp = page.properties;
+      function jTxt(field) {
+        var f = jp[field];
+        if (!f) return '';
+        if (f.rich_text && f.rich_text[0]) return f.rich_text[0].plain_text;
+        if (f.title     && f.title[0])     return f.title[0].plain_text;
+        return '';
+      }
+      return {
+        id:        page.id,
+        jobTitle:  jTxt('Job Title 1'),
+        company:   jTxt('Company Name (Text)'),
+        score:     jp[F.m7Score]   && jp[F.m7Score].number   != null ? jp[F.m7Score].number   : null,
+        tier:      jp[F.finalTier] && jp[F.finalTier].select         ? jp[F.finalTier].select.name : '',
+        status:    jp['Status']    && jp['Status'].status            ? jp['Status'].status.name    : '',
+        dateEval:  jp['Date Evaluated'] && jp['Date Evaluated'].date ? jp['Date Evaluated'].date.start : '',
+        notionUrl: 'https://notion.so/' + page.id.replace(/-/g, '')
+      };
+    });
+
+    res.json({ ok: true, jobs });
+  } catch (err) {
+    console.error('search-jobs error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Resume Assembly Engine ─────────────────────────────────────────────────
 
 async function queryLibSection(sectionName, limit, token) {
@@ -811,25 +854,19 @@ async function queryLibSection(sectionName, limit, token) {
 
 app.post('/api/assemble-resume', async function(req, res) {
   try {
-    var companyName       = req.body.companyName;
+    var notionJobId       = req.body.notionJobId;
+    var companyName       = req.body.companyName || '';
     var resumeTypeOverride = req.body.resumeTypeOverride || '';
-    if (!companyName) return res.status(400).json({ error: 'companyName required' });
+    if (!notionJobId) return res.status(400).json({ error: 'notionJobId required' });
 
     var NOTION_TOKEN  = process.env.NOTION_TOKEN;
     var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
-    // 1 — Find the most recent matching job in Jobs DB
-    var jobQuery = await notionRequest('POST', '/databases/' + JOBS_DB + '/query', {
-      filter: { property: 'Company Name (Text)', rich_text: { contains: companyName } },
-      sorts:  [{ timestamp: 'created_time', direction: 'descending' }],
-      page_size: 1
-    }, NOTION_TOKEN);
-
-    if (!jobQuery.results || jobQuery.results.length === 0) {
-      return res.status(404).json({ error: 'No analyzed job found for "' + companyName + '". Run the Job Posting Analyzer first.' });
+    // 1 — Fetch the specific job record by page ID
+    var job = await notionRequest('GET', '/pages/' + notionJobId, null, NOTION_TOKEN);
+    if (!job || !job.properties) {
+      return res.status(404).json({ error: 'Job record not found. Make sure the analyzer has run for this posting.' });
     }
-
-    var job = jobQuery.results[0];
     var jp  = job.properties;
     function jTxt(field) {
       var f = jp[field];
