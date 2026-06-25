@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Job Posting Analyzer — Stephen R. Cherico</title>
+<title>Career Intelligence Platform — Stephen R. Cherico</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
@@ -522,6 +522,49 @@
     .si-grid { grid-template-columns: 1fr; }
     .si-result-grid { grid-template-columns: 1fr 1fr; }
   }
+
+  /* ── Tab Navigation ─────────────────────────────────────────────────────── */
+  .cip-tab-nav {
+    background: var(--navy);
+    border-bottom: 1px solid rgba(200,168,75,0.18);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .cip-tab-nav-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: flex;
+    gap: 4px;
+  }
+  .cip-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 14px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.45);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: color 0.18s, border-color 0.18s;
+    white-space: nowrap;
+  }
+  .cip-tab-btn:hover { color: rgba(255,255,255,0.78); }
+  .cip-tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .cip-tab-icon { font-size: 14px; }
+  .cip-tab-panel { display: none; }
+  .cip-tab-panel.active { display: block; }
+  @media (max-width: 600px) {
+    .cip-tab-nav-inner { padding: 0 16px; }
+    .cip-tab-btn { padding: 12px 12px; font-size: 12px; }
+  }
+
 </style>
 </head>
 <body>
@@ -529,16 +572,31 @@
 <header>
   <div class="header-inner">
     <div class="header-eyebrow">Live Portfolio Demo</div>
-    <h1>Job Posting <em>Analyzer</em></h1>
-    <p class="header-sub">Paste any job posting and watch a multi-agent AI pipeline extract, score, and evaluate it in real time — writing results directly to a live Notion database.</p>
+    <h1>Career <em>Intelligence</em> Platform</h1>
+    <p class="header-sub">A multi-module AI platform for the modern job search — analyze opportunities, build your story library, and assemble tailored resumes in real time.</p>
     <div class="header-badges">
       <div class="badge"><span class="badge-dot"></span>Notion Integration</div>
       <div class="badge"><span class="badge-dot"></span>8-Module Scoring Engine</div>
+      <div class="badge"><span class="badge-dot"></span>Career Life Distiller</div>
       <div class="badge"><span class="badge-dot"></span>Company Enrichment</div>
-      <div class="badge"><span class="badge-dot"></span>Contact Discovery</div>
     </div>
   </div>
 </header>
+
+<!-- ── Tab Navigation ──────────────────────────────────────────────────────── -->
+<nav class="cip-tab-nav">
+  <div class="cip-tab-nav-inner">
+    <button class="cip-tab-btn active" data-tab="analyzer" onclick="switchTab('analyzer')">
+      <span class="cip-tab-icon">&#128269;</span> Job Posting Analyzer
+    </button>
+    <button class="cip-tab-btn" data-tab="distiller" onclick="switchTab('distiller')">
+      <span class="cip-tab-icon">&#10024;</span> Career Life Distiller
+    </button>
+  </div>
+</nav>
+
+<!-- ── Tab Panel 1: Job Posting Analyzer ───────────────────────────────────── -->
+<div class="cip-tab-panel active" id="tab-analyzer">
 
 <main>
   <div class="how-it-works">
@@ -755,12 +813,16 @@
   </div>
 </section>
 
+</div><!-- /tab-analyzer -->
+
+<!-- ── Tab Panel 2: Career Life Distiller ──────────────────────────────────── -->
+<div class="cip-tab-panel" id="tab-distiller">
 
 <section class="story-ingest-wrap">
   <div class="story-ingest-card">
     <div class="story-ingest-header">
-      <h3>Story Ingestion Engine</h3>
-      <p>Turn a career narrative into structured resume modules &mdash; Story record + Experience Bullets written directly to your Notion library.</p>
+      <h3>Career Life Distiller</h3>
+      <p>Turn any career narrative into structured resume modules &mdash; Story record + Experience Bullets written directly to your Notion library.</p>
     </div>
 
     <!-- Form -->
@@ -862,6 +924,8 @@
     <div id="si-error" style="display:none" class="si-error-box"></div>
   </div>
 </section>
+
+</div><!-- /tab-distiller -->
 
 <footer>
   Built by <a href="https://www.notion.so/d982b19992bb4628813962b9bb59a622">Stephen R. Cherico</a> &nbsp;·&nbsp; Career Intelligence Platform demo &nbsp;·&nbsp; Powered by Claude + Notion &nbsp;·&nbsp; 2026
@@ -1403,5 +1467,18 @@ function resetStoryIngestion() {
   [1,2,3,4,5].forEach(function(n) { siSetStage(n, ''); });
 }
 </script>
+
+<script>
+function switchTab(id) {
+  document.querySelectorAll('.cip-tab-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === id);
+  });
+  document.querySelectorAll('.cip-tab-panel').forEach(function(p) {
+    p.classList.toggle('active', p.id === 'tab-' + id);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+
 </body>
 </html>
