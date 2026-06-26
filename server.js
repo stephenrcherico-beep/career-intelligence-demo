@@ -919,13 +919,15 @@ app.post('/api/assemble-resume', async function(req, res) {
 
     // 2 — Load Resume Library modules in parallel (read path uses database ID)
     var sections = await Promise.all([
-      queryLibSection('Headline',                             6,  NOTION_TOKEN),
-      queryLibSection('Summary',                             4,  NOTION_TOKEN),
-      queryLibSection('Skills',                              4,  NOTION_TOKEN),
-      queryLibSection('Core Competencies',                  16,  NOTION_TOKEN),
-      queryLibSection('Experience Bullet',                  30,  NOTION_TOKEN),
-      queryLibSection('Tools & AI Stack',                    4,  NOTION_TOKEN),
-      queryLibSection('PROFESSIONAL DEVELOPMENT & EDUCATION', 4, NOTION_TOKEN)
+      queryLibSection('Headline',                              6,  NOTION_TOKEN),
+      queryLibSection('Summary',                              4,  NOTION_TOKEN),
+      queryLibSection('Skills',                               4,  NOTION_TOKEN),
+      queryLibSection('Core Competencies',                   16,  NOTION_TOKEN),
+      queryLibSection('Experience Bullet',                   30,  NOTION_TOKEN),
+      queryLibSection('Tools & AI Stack',                     4,  NOTION_TOKEN),
+      queryLibSection('PROFESSIONAL DEVELOPMENT & EDUCATION', 4,  NOTION_TOKEN),
+      queryLibSection('Business header',                     20,  NOTION_TOKEN),
+      queryLibSection('Business description',                10,  NOTION_TOKEN)
     ]);
     var headlines  = sections[0];
     var summaries  = sections[1];
@@ -934,6 +936,8 @@ app.post('/api/assemble-resume', async function(req, res) {
     var bullets    = sections[4];
     var toolsMods  = sections[5];
     var pdMods     = sections[6];
+    var bizHeaders = sections[7];
+    var bizDescs   = sections[8];
 
     function fmtMods(arr) {
       return arr.map(function(m, i) {
