@@ -53,6 +53,28 @@ function notionHeaders(token) {
   };
 }
 
+// Collection-backed databases reject /query with v2025-09-03 — use v2022-06-28
+function notionQueryHeaders(token) {
+  return {
+    'Authorization': 'Bearer ' + token,
+    'Content-Type': 'application/json',
+    'Notion-Version': '2022-06-28'
+  };
+}
+
+async function notionQueryRequest(databaseId, body, token) {
+  var res = await fetch(NOTION_API + '/databases/' + databaseId + '/query', {
+    method: 'POST',
+    headers: notionQueryHeaders(token),
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    var err = await res.text();
+    throw new Error('Notion POST /databases/' + databaseId + '/query -> ' + res.status + ': ' + err);
+  }
+  return res.json();
+}
+
 function rt(text) {
   if (!text) return [];
   return [{ type: 'text', text: { content: String(text).slice(0, 2000) } }];
@@ -791,25 +813,15 @@ app.post('/api/search-jobs', async function(req, res) {
 
     // Query Jobs DB — no filter or sort to avoid invalid_request_url;
     // filter client-side by company name
-    // /databases/{id}/query fails for this collection-backed DB.
-    // Use /search and filter by parent — Notion v2025-09-03 returns
-    // parent.type === "data_source" with parent.data_source_id for collection rows.
-    var r = await notionRequest('POST', '/search', {
-      query:  jobTitle,
-      filter: { value: 'page', property: 'object' },
-      page_size: 20
+    // Use v2022-06-28 for direct DB query (v2025-09-03 returns invalid_request_url)
+    var r = await notionQueryRequest(JOBS_DB, {
+      filter: { property: 'Job Title 1', title: { contains: jobTitle } },
+      sorts:  [{ property: 'Date Evaluated', direction: 'descending' }],
+      page_size: 50
     }, NOTION_TOKEN);
 
-    var nameLower   = jobTitle.toLowerCase();
-
-    // Identify job postings by their unique properties instead of parent ID.
-    // Accept any page that has the Module 7 score OR Company Name (Text) field —
-    // those only exist on job posting rows, not on company enrichment pages.
-    var pages = (r.results || []).filter(function(page) {
-      if (!page.properties) return false;
-      var props = page.properties;
-      return !!(props['Company Name (Text)'] || props[F.m7Score] || props['Job Title 1']);
-    });
+    var nameLower = jobTitle.toLowerCase();
+    var pages = (r.results || []);
 
     var jobs = pages.map(function(page) {
       var jp = page.properties;
@@ -846,7 +858,7 @@ app.post('/api/search-jobs', async function(req, res) {
 // ── Resume Assembly Engine ─────────────────────────────────────────────────
 
 async function queryLibSection(sectionName, limit, token) {
-  var r = await notionRequest('POST', '/databases/' + RESUME_LIB_COL + '/query', {
+  var r = await notionQueryRequest(RESUME_LIB, {
     filter: { property: 'Section', select: { equals: sectionName } },
     sorts: [{ property: 'Rank', direction: 'ascending' }],
     page_size: limit || 10
