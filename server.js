@@ -964,6 +964,8 @@ app.post('/api/assemble-resume', async function(req, res) {
       'SKILLS (pick 1 — tailor by injecting keyword-matched skills from the posting):\n' + fmtMods(skillsMods) + '\n\n' +
       'CORE COMPETENCY POOL (pick 12, arrange in 3 rows of 4, prioritize posting keyword matches):\n' + fmtMods(compMods) + '\n\n' +
       'EXPERIENCE BULLETS (pick 8–12 most relevant — copy text EXACTLY, never modify a single word):\n' + fmtMods(bullets) + '\n\n' +
+      'BUSINESS HEADERS — for each employer in your selected bullets, output the matching header VERBATIM:\n' +
+      (bizHeaders.length ? bizHeaders.map(function(h,i){ return (i+1)+'. Employer="'+h.employer+'" Header: '+h.text; }).join('\n') : '(none in library yet)') + '\n\n' +
       'TOOLS & AI STACK (pick 1 — tailor lightly to match posting tools):\n' + fmtMods(toolsMods) + '\n\n' +
       'PROFESSIONAL DEVELOPMENT (pick 1):\n' + fmtMods(pdMods) + '\n\n' +
       'RESUME TYPE OPTIONS:\n' +
@@ -980,7 +982,8 @@ app.post('/api/assemble-resume', async function(req, res) {
       '• Tools & AI Stack: inject tools/platform keywords from the posting\n' +
       '• Core Competencies: select 12 from pool, arrange to best surface posting keyword matches\n' +
       '• Experience bullets: COPY EXACTLY AS STORED — never rewrite, paraphrase, or keyword-stuff\n' +
-      '• DATE RULE — CRITICAL: All date ranges (e.g. "Jan 2017 – Dec 2025") must be reproduced exactly as stored — expand month abbreviations (Jan→January) but never change the year or month. If a date appears to be in the future, copy it anyway. Never substitute today\'s date or your training cutoff for any stored date.\n\n' +
+      '• DATE RULE — CRITICAL: All date ranges must be reproduced exactly as stored — expand abbreviations (Jan→January) but never change year or month. If a date is in the future, copy it anyway.\n' +
+      '• BUSINESS HEADER RULE: Populate businessHeaders with each employer whose bullets you selected. Key = employer name exactly, Value = verbatim Business Header text from the list above. Never invent or modify header text.\n\n' +
       'Return ONLY valid JSON (no markdown fences):\n' +
       '{\n' +
       '  "resumeType": "...",\n' +
@@ -991,7 +994,8 @@ app.post('/api/assemble-resume', async function(req, res) {
       '  "summary": "...",\n' +
       '  "skills": ["...", "..."],\n' +
       '  "competencies": { "row1": ["","","",""], "row2": ["","","",""], "row3": ["","","",""] },\n' +
-      '  "experienceSections": [ { "employer": "...", "header": "<exact Business Header text>", "bullets": ["...", "..."] } ],\n' +
+      '  "selectedBullets": [ { "text": "...", "employer": "...", "bulletType": "..." } ],\n' +
+      '  "businessHeaders": { "ExactEmployerName": "verbatim header text" },\n' +
       '  "toolsAndAiStack": "...",\n' +
       '  "professionalDevelopment": "...",\n' +
       '  "keywordsInjected": ["..."],\n' +
