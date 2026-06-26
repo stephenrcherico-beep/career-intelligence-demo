@@ -1846,43 +1846,33 @@ function showAssemblyPreview(data) {
     compWrap.appendChild(grid);
   });
 
-  // Experience — grouped by employer with library-sourced headers
+  // Experience — group selectedBullets by employer, show library-sourced header above each group
   var bulletList = document.getElementById('ra-bullets');
   bulletList.innerHTML = '';
-
-  // Support both new experienceSections and legacy selectedBullets
-  var expSections = a.experienceSections || null;
-  if (!expSections && a.selectedBullets) {
-    // Convert flat list into grouped sections for backwards compat
-    var grouped = {};
-    var order   = [];
-    (a.selectedBullets || []).forEach(function(b) {
-      var emp = b.employer || 'Other';
-      if (!grouped[emp]) { grouped[emp] = []; order.push(emp); }
-      grouped[emp].push(b);
-    });
-    expSections = order.map(function(emp) {
-      return { employer: emp, header: emp, bullets: grouped[emp].map(function(b){ return b.text; }) };
-    });
-  }
-
-  (expSections || []).forEach(function(section) {
-    // Employer header row
-    if (section.header) {
-      var hdr = document.createElement('li');
-      hdr.className = 'ra-employer-header';
-      hdr.textContent = section.header;
-      bulletList.appendChild(hdr);
-    }
-    // Bullets under this employer
-    (section.bullets || []).forEach(function(bulletText) {
-      var li   = document.createElement('li');
+  var bizHdrs  = a.businessHeaders || {};
+  var grouped  = {};
+  var empOrder = [];
+  (a.selectedBullets || []).forEach(function(b) {
+    var emp = b.employer || 'Other';
+    if (!grouped[emp]) { grouped[emp] = []; empOrder.push(emp); }
+    grouped[emp].push(b.text || '');
+  });
+  empOrder.forEach(function(emp) {
+    // Employer header — use library text if available, else fallback to employer name
+    var hdrText = bizHdrs[emp] || emp;
+    var hdr = document.createElement('li');
+    hdr.className = 'ra-employer-header';
+    hdr.textContent = hdrText;
+    bulletList.appendChild(hdr);
+    // Bullets
+    grouped[emp].forEach(function(bulletText) {
+      var li  = document.createElement('li');
       li.className = 'ra-bullet-item';
-      var dot  = document.createElement('span');
+      var dot = document.createElement('span');
       dot.className = 'ra-bullet-dot';
       dot.innerHTML = '&bull;';
-      var txt  = document.createElement('div');
-      txt.textContent = (typeof bulletText === 'string') ? bulletText : (bulletText.text || '');
+      var txt = document.createElement('div');
+      txt.textContent = bulletText;
       li.appendChild(dot);
       li.appendChild(txt);
       bulletList.appendChild(li);
