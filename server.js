@@ -936,7 +936,7 @@ app.post('/api/assemble-resume', async function(req, res) {
     var bullets    = sections[4];
     var toolsMods  = sections[5];
     var pdMods     = sections[6];
-    var bizHeaders = sections[7];
+    var bizHeaders = sections[7].slice().sort(function(a,b){ return (a.rank||50)-(b.rank||50); });
     var bizDescs   = sections[8];
 
     function fmtMods(arr) {
@@ -968,7 +968,7 @@ app.post('/api/assemble-resume', async function(req, res) {
       'SKILLS (pick 1 — tailor by injecting keyword-matched skills from the posting):\n' + fmtMods(skillsMods) + '\n\n' +
       'CORE COMPETENCY POOL (pick 12, arrange in 3 rows of 4, prioritize posting keyword matches):\n' + fmtMods(compMods) + '\n\n' +
       'EXPERIENCE BULLETS (pick 8–12 most relevant — copy text EXACTLY, never modify a single word):\n' + fmtMods(bullets) + '\n\n' +
-      'BUSINESS HEADERS — for each employer in your selected bullets, output the matching header VERBATIM:\n' +
+      'BUSINESS HEADERS — listed in preferred resume order (index 1 = most recent/prominent). Output selectedBullets grouped by employer in this exact order:\n' +
       (bizHeaders.length ? bizHeaders.map(function(h,i){ return (i+1)+'. Employer="'+h.employer+'" Header: '+h.text; }).join('\n') : '(none in library yet)') + '\n\n' +
       'TOOLS & AI STACK (pick 1 — tailor lightly to match posting tools):\n' + fmtMods(toolsMods) + '\n\n' +
       'PROFESSIONAL DEVELOPMENT (pick 1):\n' + fmtMods(pdMods) + '\n\n' +
@@ -987,7 +987,7 @@ app.post('/api/assemble-resume', async function(req, res) {
       '• Core Competencies: select 12 from pool, arrange to best surface posting keyword matches\n' +
       '• Experience bullets: COPY EXACTLY AS STORED — never rewrite, paraphrase, or keyword-stuff\n' +
       '• DATE RULE — CRITICAL: All date ranges must be reproduced exactly as stored — expand abbreviations (Jan→January) but never change year or month. If a date is in the future, copy it anyway.\n' +
-      '• BUSINESS HEADER RULE: Populate businessHeaders with each employer whose bullets you selected. Key = employer name exactly, Value = verbatim Business Header text from the list above. Never invent or modify header text.\n\n' +
+      '• BUSINESS HEADER RULE: Populate businessHeaders with each employer whose bullets you selected. Key = employer name exactly, Value = verbatim Business Header text from the list above. Never invent or modify header text. Output selectedBullets with bullets grouped by employer, in the same order as the numbered Business Headers list above (employer #1 first).\n\n' +
       'Return ONLY valid JSON (no markdown fences):\n' +
       '{\n' +
       '  "resumeType": "...",\n' +
