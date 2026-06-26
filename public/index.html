@@ -614,7 +614,12 @@
   .ra-bullet-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
   .ra-kw-row { display: flex; flex-wrap: wrap; gap: 5px; }
   .ra-kw-chip { font-size: 11px; padding: 3px 9px; background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.3); border-radius: 10px; color: var(--gold-dim); }
-  .ra-notes-box { background: var(--cream); border-left: 3px solid var(--gold); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-top: 16px; }
+  .ra-notes-details { margin-top: 20px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-gold); }
+  .ra-notes-details summary { background: var(--cream); padding: 10px 14px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; letter-spacing: 0.04em; text-transform: uppercase; list-style: none; display: flex; align-items: center; gap: 8px; }
+  .ra-notes-details summary::-webkit-details-marker { display: none; }
+  .ra-notes-details summary::before { content: '▶'; font-size: 9px; transition: transform 0.2s; }
+  .ra-notes-details[open] summary::before { transform: rotate(90deg); }
+  .ra-notes-box { background: var(--cream); padding: 12px 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; border-top: 1px solid var(--border-gold); }
   .ra-cowork-btn { display: block; width: 100%; margin-top: 20px; padding: 13px; background: var(--cream); border: 1px dashed var(--border-gold); border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--gold-dim); cursor: pointer; text-align: center; transition: background 0.18s; }
   .ra-cowork-btn:hover { background: rgba(200,168,75,0.08); }
   .ra-error-box { background: var(--error-bg); border: 1px solid rgba(185,28,28,0.2); border-radius: 10px; padding: 16px 20px; color: var(--error); font-size: 13px; margin-top: 20px; }
@@ -1103,7 +1108,10 @@
           </div>
         </div>
 
-        <div class="ra-notes-box" id="ra-notes"></div>
+        <details class="ra-notes-details" id="ra-notes-details" style="display:none">
+          <summary>Assembly Notes</summary>
+          <div class="ra-notes-box" id="ra-notes"></div>
+        </details>
 
         <button class="ra-cowork-btn" onclick="copyCoworkPrompt()" id="ra-cowork-btn">
           &#128196; Build Full .docx &mdash; Copy Cowork Prompt
@@ -1884,7 +1892,9 @@ function showAssemblyPreview(data) {
   document.getElementById('ra-pd').textContent    = a.professionalDevelopment || '';
 
   // Notes
-  document.getElementById('ra-notes').textContent = a.tailoringNotes || '';
+  var notes = a.tailoringNotes || '';
+  document.getElementById('ra-notes').textContent = notes;
+  document.getElementById('ra-notes-details').style.display = notes ? '' : 'none';
 }
 
 function copyCoworkPrompt() {
