@@ -607,6 +607,7 @@
   .ra-comp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; }
   .ra-comp-item { font-size: 12px; padding: 6px 10px; background: var(--cream-dark); border-radius: 6px; text-align: center; color: var(--text-primary); }
   .ra-bullet-list { list-style: none; padding: 0; margin: 0; }
+  .ra-employer-header { list-style: none; font-size: 12px; font-weight: 700; color: var(--text-primary); padding: 10px 0 3px; border-bottom: 2px solid var(--gold-dim); margin: 6px 0 2px; letter-spacing: 0.02em; text-transform: uppercase; }
   .ra-bullet-item { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(15,30,53,0.05); font-size: 13px; color: var(--text-primary); line-height: 1.5; }
   .ra-bullet-item:last-child { border-bottom: none; }
   .ra-bullet-dot { color: var(--gold); font-size: 16px; flex-shrink: 0; margin-top: 1px; }
@@ -1845,26 +1846,47 @@ function showAssemblyPreview(data) {
     compWrap.appendChild(grid);
   });
 
-  // Experience Bullets
+  // Experience — grouped by employer with library-sourced headers
   var bulletList = document.getElementById('ra-bullets');
   bulletList.innerHTML = '';
-  (a.selectedBullets || []).forEach(function(b) {
-    var li   = document.createElement('li');
-    li.className = 'ra-bullet-item';
-    var dot  = document.createElement('span');
-    dot.className = 'ra-bullet-dot';
-    dot.innerHTML = '&bull;';
-    var body = document.createElement('div');
-    var txt  = document.createElement('div');
-    txt.textContent = b.text || '';
-    var meta = document.createElement('div');
-    meta.className = 'ra-bullet-meta';
-    meta.textContent = [b.employer, b.bulletType].filter(Boolean).join(' · ');
-    body.appendChild(txt);
-    if (meta.textContent) body.appendChild(meta);
-    li.appendChild(dot);
-    li.appendChild(body);
-    bulletList.appendChild(li);
+
+  // Support both new experienceSections and legacy selectedBullets
+  var expSections = a.experienceSections || null;
+  if (!expSections && a.selectedBullets) {
+    // Convert flat list into grouped sections for backwards compat
+    var grouped = {};
+    var order   = [];
+    (a.selectedBullets || []).forEach(function(b) {
+      var emp = b.employer || 'Other';
+      if (!grouped[emp]) { grouped[emp] = []; order.push(emp); }
+      grouped[emp].push(b);
+    });
+    expSections = order.map(function(emp) {
+      return { employer: emp, header: emp, bullets: grouped[emp].map(function(b){ return b.text; }) };
+    });
+  }
+
+  (expSections || []).forEach(function(section) {
+    // Employer header row
+    if (section.header) {
+      var hdr = document.createElement('li');
+      hdr.className = 'ra-employer-header';
+      hdr.textContent = section.header;
+      bulletList.appendChild(hdr);
+    }
+    // Bullets under this employer
+    (section.bullets || []).forEach(function(bulletText) {
+      var li   = document.createElement('li');
+      li.className = 'ra-bullet-item';
+      var dot  = document.createElement('span');
+      dot.className = 'ra-bullet-dot';
+      dot.innerHTML = '&bull;';
+      var txt  = document.createElement('div');
+      txt.textContent = (typeof bulletText === 'string') ? bulletText : (bulletText.text || '');
+      li.appendChild(dot);
+      li.appendChild(txt);
+      bulletList.appendChild(li);
+    });
   });
 
   // Tools + PD
