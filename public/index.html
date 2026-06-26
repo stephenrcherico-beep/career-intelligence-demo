@@ -614,6 +614,23 @@
   .ra-bullet-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
   .ra-kw-row { display: flex; flex-wrap: wrap; gap: 5px; }
   .ra-kw-chip { font-size: 11px; padding: 3px 9px; background: rgba(200,168,75,0.1); border: 1px solid rgba(200,168,75,0.3); border-radius: 10px; color: var(--gold-dim); }
+  /* Employer order picker */
+  .ra-emp-step { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-gold); }
+  .ra-emp-step-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 10px; }
+  .ra-emp-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .ra-emp-row { display: flex; align-items: center; gap: 10px; background: var(--cream); border: 1px solid var(--border-gold); border-radius: 8px; padding: 8px 12px; transition: opacity 0.15s; }
+  .ra-emp-row.excluded { opacity: 0.4; }
+  .ra-emp-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ra-emp-row.excluded .ra-emp-num { background: var(--text-muted); }
+  .ra-emp-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .ra-emp-arrows { display: flex; flex-direction: column; gap: 2px; }
+  .ra-emp-arrow { background: none; border: 1px solid var(--border-gold); border-radius: 4px; width: 22px; height: 18px; font-size: 10px; cursor: pointer; color: var(--text-muted); line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .ra-emp-arrow:hover { background: rgba(200,168,75,0.12); color: var(--gold); }
+  .ra-emp-arrow:disabled { opacity: 0.25; cursor: default; }
+  .ra-emp-toggle { background: none; border: 1px solid var(--border-gold); border-radius: 5px; font-size: 10px; padding: 2px 7px; cursor: pointer; color: var(--text-muted); white-space: nowrap; }
+  .ra-emp-toggle:hover { background: rgba(200,168,75,0.1); }
+  .ra-emp-row:not(.excluded) .ra-emp-toggle { color: var(--gold-dim); }
+  .ra-emp-step-hint { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
   .ra-notes-details { margin-top: 20px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-gold); }
   .ra-notes-details summary { background: var(--cream); padding: 10px 14px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; letter-spacing: 0.04em; text-transform: uppercase; list-style: none; display: flex; align-items: center; gap: 8px; }
   .ra-notes-details summary::-webkit-details-marker { display: none; }
@@ -1034,7 +1051,16 @@
       <div id="ra-job-picker" style="display:none">
         <div class="ra-picker-label">Select the posting to build for:</div>
         <div id="ra-job-list"></div>
-        <div class="ra-input-row" style="margin-top:14px;">
+      </div>
+
+      <!-- Step 3 — Employer order picker (hidden until job selected) -->
+      <div id="ra-emp-step" style="display:none" class="ra-emp-step">
+        <div class="ra-emp-step-label">Experience Section — Employer Order</div>
+        <p class="ra-emp-step-hint">Drag the order you want employers to appear. Toggle off to exclude an employer from this resume.</p>
+        <div class="ra-emp-list" id="ra-emp-list">
+          <!-- rows injected by JS -->
+        </div>
+        <div class="ra-input-row" style="margin-top:4px;">
           <select id="ra-type-override" class="ra-select">
             <option value="">Auto-detect resume type</option>
             <option value="Product Operations">Product Operations</option>
@@ -1043,7 +1069,7 @@
             <option value="Zero-to-One / Founder">Zero-to-One / Founder</option>
             <option value="Hybrid">Hybrid</option>
           </select>
-          <button class="ra-btn" id="ra-assemble-btn" onclick="startAssembly()" disabled>Assemble &#8594;</button>
+          <button class="ra-btn" id="ra-assemble-btn" onclick="startAssembly()">Assemble &#8594;</button>
         </div>
       </div>
     </div>
@@ -1683,10 +1709,11 @@ function switchTab(id) {
 
 
 <script>
-var raAssembled    = null;
-var raJobTitle     = '';
-var raCompany      = '';
+var raAssembled     = null;
+var raJobTitle      = '';
+var raCompany       = '';
 var raSelectedJobId = null;
+var raEmployers     = []; // [{employer, headerText, excluded}] in display order
 
 function raSetStage(n, state) {
   var el = document.getElementById('ra-s' + n);
@@ -1746,7 +1773,7 @@ async function searchJobs() {
         raSelectedJobId = job.id;
         raCompany  = job.company || company;
         raJobTitle = job.jobTitle || company;
-        document.getElementById('ra-assemble-btn').disabled = false;
+        loadEmployerPicker();
       });
       list.appendChild(item);
     });
@@ -1758,6 +1785,67 @@ async function searchJobs() {
     btn.disabled = false;
     btn.textContent = 'Search →';
   }
+}
+
+async function loadEmployerPicker() {
+  var step = document.getElementById('ra-emp-step');
+  var list = document.getElementById('ra-emp-list');
+  step.style.display = 'block';
+  list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Loading employers…</div>';
+  document.getElementById('ra-assemble-btn').disabled = true;
+
+  try {
+    var resp = await fetch('/api/mrl-employers');
+    var data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || 'Could not load employers');
+
+    raEmployers = (data.employers || []).map(function(e) {
+      return { employer: e.employer, headerText: e.headerText, excluded: false };
+    });
+    renderEmpList();
+    document.getElementById('ra-assemble-btn').disabled = raEmployers.length === 0;
+  } catch (err) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--error);padding:8px 0">Could not load employers: ' + err.message + '</div>';
+    // Still allow assembly — server will use fallback ordering
+    document.getElementById('ra-assemble-btn').disabled = false;
+  }
+}
+
+function renderEmpList() {
+  var list = document.getElementById('ra-emp-list');
+  list.innerHTML = '';
+  var pos = 0;
+  raEmployers.forEach(function(emp, idx) {
+    if (!emp.excluded) pos++;
+    var row = document.createElement('div');
+    row.className = 'ra-emp-row' + (emp.excluded ? ' excluded' : '');
+
+    var numBadge = '<div class="ra-emp-num">' + (emp.excluded ? '–' : pos) + '</div>';
+    var name     = '<div class="ra-emp-name">' + emp.employer + '</div>';
+
+    var upBtn  = '<button class="ra-emp-arrow" ' + (idx === 0 ? 'disabled' : '') + ' onclick="empMove(' + idx + ',-1)">&#9650;</button>';
+    var dnBtn  = '<button class="ra-emp-arrow" ' + (idx === raEmployers.length - 1 ? 'disabled' : '') + ' onclick="empMove(' + idx + ',1)">&#9660;</button>';
+    var arrows = '<div class="ra-emp-arrows">' + upBtn + dnBtn + '</div>';
+
+    var tog = '<button class="ra-emp-toggle" onclick="empToggle(' + idx + ')">' + (emp.excluded ? 'Include' : 'Exclude') + '</button>';
+
+    row.innerHTML = numBadge + name + arrows + tog;
+    list.appendChild(row);
+  });
+}
+
+function empMove(idx, dir) {
+  var swap = idx + dir;
+  if (swap < 0 || swap >= raEmployers.length) return;
+  var tmp = raEmployers[idx];
+  raEmployers[idx] = raEmployers[swap];
+  raEmployers[swap] = tmp;
+  renderEmpList();
+}
+
+function empToggle(idx) {
+  raEmployers[idx].excluded = !raEmployers[idx].excluded;
+  renderEmpList();
 }
 
 async function startAssembly() {
@@ -1776,9 +1864,15 @@ async function startAssembly() {
 
   try {
     var resp = await fetch('/api/assemble-resume', {
+      
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notionJobId: raSelectedJobId, companyName: raCompany, resumeTypeOverride: override })
+      body: JSON.stringify({
+        notionJobId: raSelectedJobId,
+        companyName: raCompany,
+        resumeTypeOverride: override,
+        employerOrder: raEmployers.filter(function(e){ return !e.excluded; }).map(function(e){ return e.employer; })
+      })
     });
     var data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || 'Assembly failed');
@@ -1791,9 +1885,9 @@ async function startAssembly() {
     showAssemblyPreview(data);
   } catch (err) {
     [1,2,3,4,5].forEach(function(i){ raSetStage(i,''); });
-    document.getElementById('ra-pipeline').style.display = 'none';
-    document.getElementById('ra-error').style.display    = 'block';
-    document.getElementById('ra-error').textContent      = 'Error: ' + err.message;
+    document.getElementById('ra-pipeline').style.display  = 'none';
+    document.getElementById('ra-error').style.display     = 'block';
+    document.getElementById('ra-error').textContent       = 'Error: ' + err.message;
     document.getElementById('ra-form-area').style.display = 'block';
   }
 }
@@ -1803,62 +1897,56 @@ function showAssemblyPreview(data) {
   document.getElementById('ra-pipeline').style.display = 'none';
   document.getElementById('ra-preview').style.display  = 'block';
 
-  // Type + tier chips
   document.getElementById('ra-type-chip').textContent = a.resumeType || '';
   var tierEl = document.getElementById('ra-tier-chip');
   tierEl.textContent = data.finalTier ? data.finalTier + (data.m7Score ? '  ·  ' + data.m7Score + ' pts' : '') : '';
   tierEl.style.display = data.finalTier ? '' : 'none';
   document.getElementById('ra-rationale').textContent = a.resumeTypeRationale || '';
 
-  // Resume header
   document.getElementById('ra-headline').textContent = a.headline || '';
   document.getElementById('ra-subhead').textContent  = a.subHeadline || '';
 
-  // Keyword tags from injected keywords
   var tagWrap = document.getElementById('ra-kw-tags');
   tagWrap.innerHTML = '';
-  (a.keywordsInjected || []).slice(0, 6).forEach(function(kw) {
-    var span = document.createElement('span');
-    span.className = 'ra-resume-tag';
-    span.textContent = kw;
-    tagWrap.appendChild(span);
+  (a.keywordsInjected || []).slice(0, 8).forEach(function(kw) {
+    var chip = document.createElement('span');
+    chip.className = 'ra-kw-chip';
+    chip.textContent = kw;
+    tagWrap.appendChild(chip);
   });
 
-  // Summary
   document.getElementById('ra-summary').textContent = a.summary || '';
 
-  // Skills
   var skillsWrap = document.getElementById('ra-skills');
   skillsWrap.innerHTML = '';
   (a.skills || []).forEach(function(s) {
     var chip = document.createElement('span');
-    chip.className = 'ra-skill-chip';
+    chip.className = 'ra-kw-chip';
     chip.textContent = s;
     skillsWrap.appendChild(chip);
   });
 
-  // Core Competencies
   var compWrap = document.getElementById('ra-competencies');
   compWrap.innerHTML = '';
   var comp = a.competencies || {};
-  ['row1','row2','row3'].forEach(function(row) {
-    var grid = document.createElement('div');
-    grid.className = 'ra-comp-grid';
-    grid.style.marginBottom = '6px';
-    (comp[row] || []).forEach(function(item) {
-      var cell = document.createElement('div');
-      cell.className = 'ra-comp-item';
-      cell.textContent = item;
-      grid.appendChild(cell);
+  Object.keys(comp).forEach(function(rowKey) {
+    var row = document.createElement('div');
+    row.className = 'ra-kw-row';
+    row.style.marginBottom = '5px';
+    (comp[rowKey] || []).forEach(function(c) {
+      if (!c) return;
+      var chip = document.createElement('span');
+      chip.className = 'ra-kw-chip';
+      chip.textContent = c;
+      row.appendChild(chip);
     });
-    compWrap.appendChild(grid);
+    compWrap.appendChild(row);
   });
 
-  // Experience — group selectedBullets by employer, show library-sourced header above each group
   var bulletList = document.getElementById('ra-bullets');
   bulletList.innerHTML = '';
-  var bizHdrs  = a.businessHeaders || {};
-  var grouped  = {};
+  var bizHdrs = a.businessHeaders || {};
+  var grouped = {};
   var empOrder = [];
   (a.selectedBullets || []).forEach(function(b) {
     var emp = b.employer || 'Other';
@@ -1866,60 +1954,98 @@ function showAssemblyPreview(data) {
     grouped[emp].push(b.text || '');
   });
   empOrder.forEach(function(emp) {
-    // Employer header — use library text if available, else fallback to employer name
     var hdrText = bizHdrs[emp] || emp;
     var hdr = document.createElement('li');
     hdr.className = 'ra-employer-header';
     hdr.textContent = hdrText;
     bulletList.appendChild(hdr);
-    // Bullets
-    grouped[emp].forEach(function(bulletText) {
-      var li  = document.createElement('li');
+    grouped[emp].forEach(function(txt) {
+      var li = document.createElement('li');
       li.className = 'ra-bullet-item';
       var dot = document.createElement('span');
       dot.className = 'ra-bullet-dot';
-      dot.innerHTML = '&bull;';
-      var txt = document.createElement('div');
-      txt.textContent = bulletText;
+      dot.textContent = '•';
+      var span = document.createElement('span');
+      span.textContent = txt;
       li.appendChild(dot);
-      li.appendChild(txt);
+      li.appendChild(span);
       bulletList.appendChild(li);
     });
   });
 
-  // Tools + PD
-  document.getElementById('ra-tools').textContent = a.toolsAndAiStack        || '';
+  document.getElementById('ra-tools').textContent = a.toolsStack || '';
   document.getElementById('ra-pd').textContent    = a.professionalDevelopment || '';
 
-  // Notes
   var notes = a.tailoringNotes || '';
   document.getElementById('ra-notes').textContent = notes;
   document.getElementById('ra-notes-details').style.display = notes ? '' : 'none';
-}
 
-function copyCoworkPrompt() {
-  if (!raAssembled) return;
-  var prompt = 'Build a resume for ' + raJobTitle + ' at ' + raCompany + '. Resume type: ' + raAssembled.resumeType + '. Job family: ' + raAssembled.jobFamily + '.';
-  navigator.clipboard.writeText(prompt).then(function() {
-    var btn = document.getElementById('ra-cowork-btn');
-    btn.textContent = '✓ Copied! Paste into a Cowork session to build the .docx';
-    setTimeout(function(){ btn.innerHTML = '&#128196; Build Full .docx &mdash; Copy Cowork Prompt'; }, 3000);
-  });
+  document.getElementById('ra-cowork-btn').style.display = '';
 }
 
 function resetAssembly() {
-  document.getElementById('ra-company').value = '';
-  document.getElementById('ra-type-override').value = '';
+  raAssembled     = null;
+  raSelectedJobId = null;
+  raEmployers     = [];
+  raCompany       = '';
+  raJobTitle      = '';
+
+  document.getElementById('ra-form-area').style.display  = 'block';
   document.getElementById('ra-preview').style.display    = 'none';
   document.getElementById('ra-pipeline').style.display   = 'none';
   document.getElementById('ra-error').style.display      = 'none';
   document.getElementById('ra-job-picker').style.display = 'none';
+  document.getElementById('ra-emp-step').style.display   = 'none';
+  document.getElementById('ra-emp-list').innerHTML       = '';
   document.getElementById('ra-job-list').innerHTML       = '';
-  document.getElementById('ra-form-area').style.display  = 'block';
-  raAssembled = null;
-  raSelectedJobId = null;
+  document.getElementById('ra-company').value            = '';
+  document.getElementById('ra-assemble-btn').disabled    = true;
 }
-</script>
 
+function copyCoworkPrompt() {
+  if (!raAssembled) return;
+  var a = raAssembled;
+  var bizHdrs = a.businessHeaders || {};
+  var grouped = {};
+  var empOrder = [];
+  (a.selectedBullets || []).forEach(function(b) {
+    var emp = b.employer || 'Other';
+    if (!grouped[emp]) { grouped[emp] = []; empOrder.push(emp); }
+    grouped[emp].push(b.text || '');
+  });
+
+  var expLines = [];
+  empOrder.forEach(function(emp) {
+    expLines.push('\n' + (bizHdrs[emp] || emp));
+    grouped[emp].forEach(function(txt) { expLines.push('  • ' + txt); });
+  });
+
+  var prompt =
+    'Please build a polished .docx resume from the assembled content below. ' +
+    'Follow SOP v3.6: bullets are verbatim, tailor only the top half for ATS. ' +
+    'Resume Type: ' + (a.resumeType || '') + '\n\n' +
+    '== HEADLINE ==\n' + (a.headline || '') + '\n\n' +
+    '== SUB-HEADLINE ==\n' + (a.subHeadline || '') + '\n\n' +
+    '== SUMMARY ==\n' + (a.summary || '') + '\n\n' +
+    '== SKILLS ==\n' + (a.skills || []).join(' | ') + '\n\n' +
+    '== CORE COMPETENCIES ==\n' + (function(){
+      var c = a.competencies || {};
+      return Object.keys(c).map(function(r){ return (c[r]||[]).filter(Boolean).join('  |  '); }).join('\n');
+    })() + '\n\n' +
+    '== EXPERIENCE ==' + expLines.join('\n') + '\n\n' +
+    '== TOOLS & AI STACK ==\n' + (a.toolsStack || '') + '\n\n' +
+    '== PROFESSIONAL DEVELOPMENT ==\n' + (a.professionalDevelopment || '') + '\n\n' +
+    '== ASSEMBLY NOTES ==\n' + (a.tailoringNotes || '');
+
+  navigator.clipboard.writeText(prompt).then(function() {
+    var btn = document.getElementById('ra-cowork-btn');
+    var orig = btn.innerHTML;
+    btn.innerHTML = '&#10003; Copied to clipboard!';
+    btn.style.color = 'var(--gold)';
+    setTimeout(function(){ btn.innerHTML = orig; btn.style.color = ''; }, 2500);
+  }).catch(function() { alert('Copy failed — please copy manually.'); });
+}
+
+</script>
 </body>
 </html>
