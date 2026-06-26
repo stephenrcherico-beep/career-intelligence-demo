@@ -15,6 +15,7 @@ const RESUME_LIB   = 'd74582b89b3e44de8fcb7437a59dadb1';
 const RESUME_LIB_COL = 'ef9a489f-9bb1-4ebf-b665-03b31993cc47'; // collection / data_source_id
 const NOTION_API   = 'https://api.notion.com/v1';
 
+
 var EM = String.fromCharCode(8212);
 
 var F = {
@@ -803,6 +804,28 @@ app.post('/api/ingest-story', async function(req, res) {
 
 
 
+// ── MRL Employer List (for employer order picker) ─────────────────────────
+
+app.get('/api/mrl-employers', async function(req, res) {
+  try {
+    var NOTION_TOKEN = process.env.NOTION_TOKEN;
+    var rows = await queryLibSection('Business header', 50, NOTION_TOKEN);
+    // Deduplicate by employer, keep rows that have an employer set
+    var seen = {};
+    var employers = [];
+    rows.forEach(function(r) {
+      if (r.employer && !seen[r.employer]) {
+        seen[r.employer] = true;
+        employers.push({ employer: r.employer, headerText: r.text || '' });
+      }
+    });
+    res.json({ employers: employers });
+  } catch (err) {
+    console.error('MRL employers error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Job Search (for Resume Assembly picker) ────────────────────────────────
 
 app.post('/api/search-jobs', async function(req, res) {
@@ -880,16 +903,17 @@ async function queryLibSection(sectionName, limit, token) {
       employer:   pr['Employer']    && pr['Employer'].select    ? pr['Employer'].select.name    : '',
       bulletType: pr['Bullet Type'] && pr['Bullet Type'].select ? pr['Bullet Type'].select.name : '',
       jobFamily:  (pr['Job Family'] && pr['Job Family'].multi_select || []).map(function(s){ return s.name; }),
-      rank:       pr['Rank'] && pr['Rank'].number != null ? pr['Rank'].number : 50
+      rank:       pr['Rank'] && pr['Rank'].number != null ? pr['Rank'].number : null
     };
   });
 }
 
 app.post('/api/assemble-resume', async function(req, res) {
   try {
-    var notionJobId       = req.body.notionJobId;
-    var companyName       = req.body.companyName || '';
+    var notionJobId        = req.body.notionJobId;
+    var companyName        = req.body.companyName || '';
     var resumeTypeOverride = req.body.resumeTypeOverride || '';
+    var employerOrder      = Array.isArray(req.body.employerOrder) ? req.body.employerOrder : [];
     if (!notionJobId) return res.status(400).json({ error: 'notionJobId required' });
 
     var NOTION_TOKEN  = process.env.NOTION_TOKEN;
@@ -936,7 +960,17 @@ app.post('/api/assemble-resume', async function(req, res) {
     var bullets    = sections[4];
     var toolsMods  = sections[5];
     var pdMods     = sections[6];
-    var bizHeaders = sections[7].slice().sort(function(a,b){ return (a.rank||50)-(b.rank||50); });
+    // Use user-selected employer order from the picker.
+    // Only employers in employerOrder appear in the resume, in that sequence.
+    // Fallback: if no order sent, include all headers that have an employer set.
+    var bizHeaders;
+    if (employerOrder.length > 0) {
+      bizHeaders = sections[7]
+        .filter(function(h){ return employerOrder.indexOf(h.employer) >= 0; })
+        .sort(function(a,b){ return employerOrder.indexOf(a.employer) - employerOrder.indexOf(b.employer); });
+    } else {
+      bizHeaders = sections[7].filter(function(h){ return !!h.employer; });
+    }
     var bizDescs   = sections[8];
 
     function fmtMods(arr) {
@@ -968,7 +1002,7 @@ app.post('/api/assemble-resume', async function(req, res) {
       'SKILLS (pick 1 — tailor by injecting keyword-matched skills from the posting):\n' + fmtMods(skillsMods) + '\n\n' +
       'CORE COMPETENCY POOL (pick 12, arrange in 3 rows of 4, prioritize posting keyword matches):\n' + fmtMods(compMods) + '\n\n' +
       'EXPERIENCE BULLETS (pick 8–12 most relevant — copy text EXACTLY, never modify a single word):\n' + fmtMods(bullets) + '\n\n' +
-      'BUSINESS HEADERS — listed in preferred resume order (index 1 = most recent/prominent). Output selectedBullets grouped by employer in this exact order:\n' +
+      'BUSINESS HEADERS — these are the ONLY employers to include, already in display order (index 1 appears first on the resume). You MUST output selectedBullets grouped by employer in this exact numbered order. Do not include bullets for any employer not listed here.\n' +
       (bizHeaders.length ? bizHeaders.map(function(h,i){ return (i+1)+'. Employer="'+h.employer+'" Header: '+h.text; }).join('\n') : '(none in library yet)') + '\n\n' +
       'TOOLS & AI STACK (pick 1 — tailor lightly to match posting tools):\n' + fmtMods(toolsMods) + '\n\n' +
       'PROFESSIONAL DEVELOPMENT (pick 1):\n' + fmtMods(pdMods) + '\n\n' +
@@ -1000,11 +1034,11 @@ app.post('/api/assemble-resume', async function(req, res) {
       '  "competencies": { "row1": ["","","",""], "row2": ["","","",""], "row3": ["","","",""] },\n' +
       '  "selectedBullets": [ { "text": "...", "employer": "...", "bulletType": "..." } ],\n' +
       '  "businessHeaders": { "ExactEmployerName": "verbatim header text" },\n' +
-      '  "toolsAndAiStack": "...",\n' +
-      '  "professionalDevelopment": "...",\n' +
-      '  "keywordsInjected": ["..."],\n' +
-      '  "tailoringNotes": "..."\n' +
-      '}';
+  '  "toolsStack": "...",\n' +
+  '  "professionalDevelopment": "...",\n' +
+  '  "keywordsInjected": ["...", "..."],\n' +
+  '  "tailoringNotes": "..."\n' +
+  '}';
 
     var aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method:  'POST',
@@ -1021,17 +1055,13 @@ app.post('/api/assemble-resume', async function(req, res) {
     res.json({ ok: true, jobTitle, companyName, m7Score, finalTier, assembled });
 
   } catch (err) {
-    console.error('Assembly error:', err.message);
+    console.error('Assembly error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('*', function(req, res) {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 var PORT = process.env.PORT || 3000;
+
 app.listen(PORT, function() {
-  console.log('Career Intelligence Demo running on port ' + PORT);
-  console.log('ENV CHECK -- ANTHROPIC_KEY:', !!process.env.ANTHROPIC_API_KEY, '| NOTION_TOKEN:', !!process.env.NOTION_TOKEN, '| SERPER_API_KEY:', !!process.env.SERPER_API_KEY, '| key length:', (process.env.SERPER_API_KEY || '').length);
+  console.log('CIP server running on port ' + PORT);
 });
