@@ -979,7 +979,8 @@ app.post('/api/assemble-resume', async function(req, res) {
       '• Skills: inject skills keywords found in the posting\n' +
       '• Tools & AI Stack: inject tools/platform keywords from the posting\n' +
       '• Core Competencies: select 12 from pool, arrange to best surface posting keyword matches\n' +
-      '• Experience bullets: COPY EXACTLY AS STORED — never rewrite, paraphrase, or keyword-stuff\n\n' +
+      '• Experience bullets: COPY EXACTLY AS STORED — never rewrite, paraphrase, or keyword-stuff\n' +
+      '• DATE RULE — CRITICAL: All date ranges (e.g. "Jan 2017 – Dec 2025") must be reproduced exactly as stored — expand month abbreviations (Jan→January) but never change the year or month. If a date appears to be in the future, copy it anyway. Never substitute today\'s date or your training cutoff for any stored date.\n\n' +
       'Return ONLY valid JSON (no markdown fences):\n' +
       '{\n' +
       '  "resumeType": "...",\n' +
