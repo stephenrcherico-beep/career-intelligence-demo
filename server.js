@@ -991,7 +991,7 @@ app.post('/api/assemble-resume', async function(req, res) {
       '  "summary": "...",\n' +
       '  "skills": ["...", "..."],\n' +
       '  "competencies": { "row1": ["","","",""], "row2": ["","","",""], "row3": ["","","",""] },\n' +
-      '  "selectedBullets": [ { "text": "...", "employer": "...", "bulletType": "..." } ],\n' +
+      '  "experienceSections": [ { "employer": "...", "header": "<exact Business Header text>", "bullets": ["...", "..."] } ],\n' +
       '  "toolsAndAiStack": "...",\n' +
       '  "professionalDevelopment": "...",\n' +
       '  "keywordsInjected": ["..."],\n' +
