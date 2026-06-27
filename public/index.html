@@ -529,6 +529,97 @@
     .si-result-grid { grid-template-columns: 1fr 1fr; }
   }
 
+  /* ── Life Distiller Sub-tabs ─────────────────────────────────────────────── */
+  .ld-tab-nav {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .ld-tab-btn {
+    padding: 10px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .ld-tab-btn:hover { color: var(--text-primary); }
+  .ld-tab-btn.active { color: var(--navy); border-bottom-color: var(--navy); font-weight: 600; }
+  .ld-panel { display: none; }
+  .ld-panel.active { display: block; }
+  .ld-guided-layout {
+    display: grid;
+    grid-template-columns: 196px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .ld-type-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .ld-type-list { display: flex; flex-direction: column; gap: 2px; }
+  .ld-type-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border: 1px solid transparent;
+    user-select: none;
+  }
+  .ld-type-item:hover { background: var(--cream); }
+  .ld-type-item.selected {
+    background: var(--cream);
+    border-color: var(--border-gold);
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .ld-type-item input[type="radio"] { display: none; }
+  .ld-type-icon { font-size: 15px; flex-shrink: 0; }
+  .ld-type-text { flex: 1; line-height: 1.3; }
+  .ld-dyn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .ld-dyn-field { display: flex; flex-direction: column; gap: 4px; }
+  .ld-dyn-field.full { grid-column: 1 / -1; }
+  .ld-dyn-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+  .ld-dyn-input, .ld-dyn-select {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text-primary);
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 11px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .ld-dyn-input:focus, .ld-dyn-select:focus { outline: none; border-color: var(--navy-light); background: var(--white); }
+  .ld-narrative-section { margin-top: 4px; }
+  @media (max-width: 700px) {
+    .ld-guided-layout { grid-template-columns: 1fr; }
+    .ld-type-list { flex-direction: row; flex-wrap: wrap; }
+    .ld-dyn-grid { grid-template-columns: 1fr; }
+  }
+
   /* ── Tab Navigation ─────────────────────────────────────────────────────── */
   .cip-tab-nav {
     background: var(--navy);
@@ -681,7 +772,7 @@
     <div class="header-badges">
       <div class="badge"><span class="badge-dot"></span>Notion Integration</div>
       <div class="badge"><span class="badge-dot"></span>8-Module Scoring Engine</div>
-      <div class="badge"><span class="badge-dot"></span>Career Life Distiller</div>
+      <div class="badge"><span class="badge-dot"></span>Life Distiller</div>
       <div class="badge"><span class="badge-dot"></span>Company Enrichment</div>
     </div>
   </div>
@@ -694,7 +785,7 @@
       <span class="cip-tab-icon">&#128269;</span> Job Posting Analyzer
     </button>
     <button class="cip-tab-btn" data-tab="distiller" onclick="switchTab('distiller')">
-      <span class="cip-tab-icon">&#10024;</span> Career Life Distiller
+      <span class="cip-tab-icon">&#10024;</span> Life Distiller
     </button>
     <button class="cip-tab-btn" data-tab="assembly" onclick="switchTab('assembly')">
       <span class="cip-tab-icon">&#128196;</span> Resume Assembly
@@ -922,66 +1013,108 @@
 
 </div><!-- /tab-analyzer -->
 
-<!-- ── Tab Panel 2: Career Life Distiller ──────────────────────────────────── -->
+<!-- ── Tab Panel 2: Life Distiller ───────────────────────────────────────────── -->
 <div class="cip-tab-panel" id="tab-distiller">
 
 <section class="story-ingest-wrap">
   <div class="story-ingest-card">
     <div class="story-ingest-header">
-      <h3>Career Life Distiller</h3>
-      <p>Turn any career narrative into structured resume modules &mdash; Story record + Experience Bullets written directly to your Notion library.</p>
+      <h3>Life Distiller</h3>
+      <p>Turn any life or career experience into structured records &mdash; written directly to your Life Record in Notion.</p>
     </div>
 
-    <!-- Form -->
+    <!-- Form (both entry modes live here) -->
     <div id="si-form-area">
-      <div class="si-field-full">
-        <label class="si-label">Career Narrative <span class="si-required">*</span></label>
-        <textarea id="si-narrative" class="si-textarea" rows="9"
-          placeholder="Describe an achievement, role, or career story. Include context, actions, outcomes, and any metrics. The more detail you provide, the better the extracted bullets and story record will be..."></textarea>
-        <p class="si-hint">Long form is best. Medium and short versions will be auto-generated.</p>
-      </div>
-      <div class="si-grid">
-        <div class="si-field">
-          <label class="si-label-sm">Employer</label>
-          <input type="text" id="si-employer" class="si-input" placeholder="e.g. Dell, Softbank" />
-        </div>
-        <div class="si-field">
-          <label class="si-label-sm">Location</label>
-          <input type="text" id="si-location" class="si-input" placeholder="e.g. Austin, TX" />
-        </div>
-        <div class="si-field">
-          <label class="si-label-sm">Start Date</label>
-          <input type="month" id="si-start" class="si-input" />
-        </div>
-        <div class="si-field">
-          <label class="si-label-sm">End Date</label>
-          <input type="month" id="si-end" class="si-input" />
-        </div>
-        <div class="si-field">
-          <label class="si-label-sm">Job Title(s)</label>
-          <input type="text" id="si-titles" class="si-input" placeholder="e.g. Director of Implementation" />
-        </div>
-        <div class="si-field">
-          <label class="si-label-sm">Employment Type</label>
-          <select id="si-emptype" class="si-input">
-            <option value="">Select...</option>
-            <option value="full-time">Full-time</option>
-            <option value="part-time">Part-time</option>
-            <option value="contract">Contract</option>
-            <option value="freelance">Freelance</option>
-          </select>
-        </div>
-      </div>
-      <div class="si-field-full">
-        <label class="si-label-sm">Themes (comma separated)</label>
-        <input type="text" id="si-themes" class="si-input" placeholder="e.g. Leadership, Digital Transformation, Revenue Growth" />
-      </div>
-      <button class="si-submit-btn" id="si-btn" onclick="startStoryIngestion()">
-        &#10024; Process Story &#8594;
-      </button>
-    </div>
 
-    <!-- Pipeline progress -->
+      <!-- Sub-tab nav -->
+      <div class="ld-tab-nav">
+        <button class="ld-tab-btn active" data-ld="guided" onclick="ldSwitchTab('guided')">🎯 Guided Entry</button>
+        <button class="ld-tab-btn" data-ld="open" onclick="ldSwitchTab('open')">✏️ Open Entry</button>
+      </div>
+
+      <!-- ── Guided Entry ──────────────────────────────────────────────── -->
+      <div class="ld-panel active" id="ld-guided">
+        <div class="ld-guided-layout">
+
+          <!-- Left: type picker -->
+          <div class="ld-type-col">
+            <div class="ld-type-label">What kind of story?</div>
+            <div class="ld-type-list" id="ld-type-list">
+              <label class="ld-type-item selected" onclick="ldSelectType('work')">
+                <input type="radio" name="ld-type" value="work" checked>
+                <span class="ld-type-icon">💼</span><span class="ld-type-text">Work / Employment</span>
+              </label>
+              <label class="ld-type-item" onclick="ldSelectType('education')">
+                <input type="radio" name="ld-type" value="education">
+                <span class="ld-type-icon">🎓</span><span class="ld-type-text">Education</span>
+              </label>
+              <label class="ld-type-item" onclick="ldSelectType('volunteer')">
+                <input type="radio" name="ld-type" value="volunteer">
+                <span class="ld-type-icon">🤝</span><span class="ld-type-text">Volunteer / Community</span>
+              </label>
+              <label class="ld-type-item" onclick="ldSelectType('certification')">
+                <input type="radio" name="ld-type" value="certification">
+                <span class="ld-type-icon">📜</span><span class="ld-type-text">Certification / Training</span>
+              </label>
+              <label class="ld-type-item" onclick="ldSelectType('gap')">
+                <input type="radio" name="ld-type" value="gap">
+                <span class="ld-type-icon">⏸️</span><span class="ld-type-text">Gap Period</span>
+              </label>
+              <label class="ld-type-item" onclick="ldSelectType('project')">
+                <input type="radio" name="ld-type" value="project">
+                <span class="ld-type-icon">🔨</span><span class="ld-type-text">Project / Invention</span>
+              </label>
+              <label class="ld-type-item" onclick="ldSelectType('other')">
+                <input type="radio" name="ld-type" value="other">
+                <span class="ld-type-icon">💡</span><span class="ld-type-text">Something Else</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Right: dynamic fields + narrative -->
+          <div class="ld-form-col">
+            <div id="ld-dynamic-fields">
+              <!-- injected by ldRenderFields() -->
+            </div>
+            <div class="ld-narrative-section">
+              <div class="si-field-full" style="margin-bottom:12px">
+                <label class="si-label" id="ld-narrative-label">Tell us about it <span class="si-required">*</span></label>
+                <textarea id="ld-narrative" class="si-textarea" rows="7"
+                  placeholder="Describe what you did, accomplished, and the impact you had..."></textarea>
+                <p class="si-hint" id="ld-narrative-hint">The more detail you provide, the better the extracted bullets will be.</p>
+              </div>
+              <div class="si-field-full" style="margin-bottom:16px">
+                <label class="si-label-sm">Themes (optional, comma separated)</label>
+                <input type="text" id="ld-guided-themes" class="si-input" placeholder="e.g. Leadership, Innovation, Caregiving" />
+              </div>
+              <button class="si-submit-btn" id="ld-guided-btn" onclick="startGuidedIngestion()">
+                ✨ Process Story →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Open Entry ────────────────────────────────────────────────── -->
+      <div class="ld-panel" id="ld-open">
+        <div class="si-field-full">
+          <label class="si-label">Tell us something about your life or work</label>
+          <textarea id="ld-open-narrative" class="si-textarea" rows="9"
+            placeholder="Just start writing. A job, a volunteer role, a gap year, a project, a credential — anything that shaped who you are. The more detail you share, the better we can capture it..."></textarea>
+          <p class="si-hint">Long form is best. Medium and short versions will be auto-generated.</p>
+        </div>
+        <div class="si-field-full" style="margin-top:12px;margin-bottom:16px">
+          <label class="si-label-sm">Themes (optional, comma separated)</label>
+          <input type="text" id="ld-open-themes" class="si-input" placeholder="e.g. Leadership, Resilience, Creative Problem Solving" />
+        </div>
+        <button class="si-submit-btn" id="ld-open-btn" onclick="startOpenIngestion()">
+          ✨ Process Story →
+        </button>
+      </div>
+
+    </div><!-- /si-form-area -->
+
+    <!-- Pipeline progress (shared by both entry modes) -->
     <div id="si-pipeline" style="display:none">
       <div class="si-pipeline-header">
         <span class="si-spinner">&#9679;</span> Processing story&hellip;
@@ -991,11 +1124,11 @@
         <div class="si-stage" id="si-s2"><span class="si-stage-icon" id="si-i2">&#9675;</span> Metadata Extraction</div>
         <div class="si-stage" id="si-s3"><span class="si-stage-icon" id="si-i3">&#9675;</span> Bullet Generation</div>
         <div class="si-stage" id="si-s4"><span class="si-stage-icon" id="si-i4">&#9675;</span> Version Compression</div>
-        <div class="si-stage" id="si-s5"><span class="si-stage-icon" id="si-i5">&#9675;</span> Writing to Notion</div>
+        <div class="si-stage" id="si-s5"><span class="si-stage-icon" id="si-i5">&#9675;</span> Writing to Life Record</div>
       </div>
     </div>
 
-    <!-- Results -->
+    <!-- Results (shared) -->
     <div id="si-results" style="display:none">
       <div class="si-result-banner" id="si-banner"></div>
       <div class="si-result-grid">
@@ -1023,7 +1156,7 @@
       <div class="si-keywords" id="si-r-keywords"></div>
       <div class="si-section-label">Generated Bullets</div>
       <div id="si-r-bullet-list"></div>
-      <a class="si-notion-link" id="si-notion-link" href="#" target="_blank">View Story in Notion &#8594;</a>
+      <a class="si-notion-link" id="si-notion-link" href="#" target="_blank">View Story in Life Record &#8594;</a>
       <button class="si-reset-btn" onclick="resetStoryIngestion()">Process Another Story</button>
     </div>
 
@@ -1041,7 +1174,7 @@
   <div class="ra-card">
     <div class="ra-header">
       <h3>Resume Assembly Engine</h3>
-      <p>Enter a company you've already analyzed &mdash; the engine finds the job record, loads your Modular Resume Library, and assembles a tailored resume preview following SOP v3.6 rules.</p>
+      <p>Enter a company you've already analyzed &mdash; the engine finds the job record, loads your Life Record, and assembles a tailored resume preview following SOP v3.6 rules.</p>
     </div>
 
     <!-- Input: Step 1 — Search -->
@@ -1086,7 +1219,7 @@
       <div class="ra-pipeline">
         <div class="ra-pipeline-header"><span id="ra-spin">&#9679;</span>&nbsp;Assembling resume&hellip;</div>
         <div class="ra-stage" id="ra-s1"><span class="ra-stage-icon" id="ra-i1">&#9675;</span> Finding job record in Notion</div>
-        <div class="ra-stage" id="ra-s2"><span class="ra-stage-icon" id="ra-i2">&#9675;</span> Loading Resume Library modules</div>
+        <div class="ra-stage" id="ra-s2"><span class="ra-stage-icon" id="ra-i2">&#9675;</span> Loading Life Record modules</div>
         <div class="ra-stage" id="ra-s3"><span class="ra-stage-icon" id="ra-i3">&#9675;</span> Analyzing keywords &amp; role type</div>
         <div class="ra-stage" id="ra-s4"><span class="ra-stage-icon" id="ra-i4">&#9675;</span> Running tailoring engine (SOP v3.6)</div>
         <div class="ra-stage" id="ra-s5"><span class="ra-stage-icon" id="ra-i5">&#9675;</span> Assembling resume preview</div>
@@ -1561,7 +1694,7 @@ async function startManualEnrichment() {
   }
 }
 
-// ── Story Ingestion Engine ────────────────────────────────────────────
+// ── Life Distiller Engine ──────────────────────────────────────────────────
 
 function siSetStage(num, state) {
   var el = document.getElementById('si-s' + num);
@@ -1571,17 +1704,239 @@ function siSetStage(num, state) {
   ic.innerHTML = state === 'done' ? '&#10003;' : state === 'active' ? '&#9679;' : '&#9675;';
 }
 
-function startStoryIngestion() {
-  var narrative = (document.getElementById('si-narrative').value || '').trim();
-  if (!narrative) { alert('Please enter a career narrative.'); return; }
+// ── Sub-tab switching ─────────────────────────────────────────────────────────
+function ldSwitchTab(id) {
+  document.querySelectorAll('.ld-tab-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.ld === id);
+  });
+  document.querySelectorAll('.ld-panel').forEach(function(p) {
+    p.classList.toggle('active', p.id === 'ld-' + id);
+  });
+}
 
-  document.getElementById('si-btn').disabled = true;
+// ── Type config ───────────────────────────────────────────────────────────────
+var ldCurrentType = 'work';
+
+var ldTypeConfig = {
+  work: {
+    narrativeLabel: 'Tell us about this role <span class="si-required">*</span>',
+    narrativePlaceholder: 'Describe what you did, what you accomplished, and the impact you had. Include context, actions, outcomes, and any metrics or results...',
+    narrativeHint: 'Include team size, budget managed, revenue impact, or other measurable outcomes.',
+    fields: [
+      { id: 'ld-employer', label: 'Employer', type: 'text', placeholder: 'e.g. Dell, Salesforce', col: 'half' },
+      { id: 'ld-titles',   label: 'Job Title(s)', type: 'text', placeholder: 'e.g. Director of Implementation', col: 'half' },
+      { id: 'ld-location', label: 'Location', type: 'text', placeholder: 'e.g. Austin, TX', col: 'half' },
+      { id: 'ld-emptype',  label: 'Employment Type', type: 'select', options: [['','Select...'],['full-time','Full-time'],['part-time','Part-time'],['contract','Contract'],['freelance','Freelance']], col: 'half' },
+      { id: 'ld-start',    label: 'Start Date', type: 'month', col: 'half' },
+      { id: 'ld-end',      label: 'End Date', type: 'month', col: 'half' }
+    ]
+  },
+  education: {
+    narrativeLabel: 'Tell us about your education <span class="si-required">*</span>',
+    narrativePlaceholder: 'Describe your coursework, projects, thesis, activities, or accomplishments during this time...',
+    narrativeHint: 'Include honors, GPA if strong, relevant courses, clubs, or leadership roles.',
+    fields: [
+      { id: 'ld-school',   label: 'School / Institution', type: 'text', placeholder: 'e.g. University of Texas', col: 'half' },
+      { id: 'ld-degree',   label: 'Degree / Credential', type: 'text', placeholder: 'e.g. BS Computer Science', col: 'half' },
+      { id: 'ld-field',    label: 'Field of Study', type: 'text', placeholder: 'e.g. Business Administration', col: 'half' },
+      { id: 'ld-location', label: 'Location', type: 'text', placeholder: 'e.g. Austin, TX', col: 'half' },
+      { id: 'ld-start',    label: 'Start Date', type: 'month', col: 'half' },
+      { id: 'ld-end',      label: 'Graduation Date', type: 'month', col: 'half' }
+    ]
+  },
+  volunteer: {
+    narrativeLabel: 'Tell us about your volunteer work <span class="si-required">*</span>',
+    narrativePlaceholder: 'Describe your involvement, what you contributed, and any meaningful impact you had...',
+    narrativeHint: 'Include scope, people served, outcomes, or leadership you demonstrated.',
+    fields: [
+      { id: 'ld-org',      label: 'Organization', type: 'text', placeholder: 'e.g. Habitat for Humanity', col: 'half' },
+      { id: 'ld-role',     label: 'Role / Title', type: 'text', placeholder: 'e.g. Board Member, Tutor', col: 'half' },
+      { id: 'ld-location', label: 'Location', type: 'text', placeholder: 'e.g. Chicago, IL', col: 'half' },
+      { id: 'ld-start',    label: 'Start Date', type: 'month', col: 'half' },
+      { id: 'ld-end',      label: 'End Date', type: 'month', col: 'half' }
+    ]
+  },
+  certification: {
+    narrativeLabel: 'Tell us about this credential',
+    narrativePlaceholder: 'What did you learn? How have you applied it? Why did you pursue it?',
+    narrativeHint: 'Optional but helpful for generating resume bullets from this credential.',
+    fields: [
+      { id: 'ld-credential', label: 'Credential Name', type: 'text', placeholder: 'e.g. PMP, AWS Solutions Architect', col: 'half' },
+      { id: 'ld-issuer',     label: 'Issuing Organization', type: 'text', placeholder: 'e.g. PMI, Amazon Web Services', col: 'half' },
+      { id: 'ld-dateearned', label: 'Date Earned', type: 'month', col: 'half' }
+    ]
+  },
+  gap: {
+    narrativeLabel: 'Anything you\'d like to add? <span style="color:var(--text-muted);font-weight:400">(optional)</span>',
+    narrativePlaceholder: 'Optional context — what you did, what you learned, or how you\'d describe this period in an interview...',
+    narrativeHint: 'Gap periods are valid and important. Capture them honestly.',
+    fields: [
+      { id: 'ld-gap-reason', label: 'Reason', type: 'select', options: [['','Select reason...'],['medical','Medical / Health'],['caregiving','Caregiving'],['parental','Parental Leave'],['sabbatical','Sabbatical'],['relocation','Relocation'],['job-search','Job Search'],['other','Other']], col: 'half' },
+      { id: 'ld-gap-label',  label: 'Short Label', type: 'text', placeholder: 'e.g. Cancer Battle, Family Caregiving', col: 'half' },
+      { id: 'ld-start',      label: 'Start Date', type: 'month', col: 'half' },
+      { id: 'ld-end',        label: 'End Date', type: 'month', col: 'half' }
+    ]
+  },
+  project: {
+    narrativeLabel: 'Tell us about this project <span class="si-required">*</span>',
+    narrativePlaceholder: 'Describe the problem you were solving, your role, the approach, and the outcome...',
+    narrativeHint: 'Include technologies used, team size, scope, or measurable impact.',
+    fields: [
+      { id: 'ld-projname', label: 'Project Name', type: 'text', placeholder: 'e.g. Career Intelligence Platform', col: 'half' },
+      { id: 'ld-projrole', label: 'Your Role', type: 'text', placeholder: 'e.g. Founder, Lead Engineer', col: 'half' },
+      { id: 'ld-start',    label: 'Date Started', type: 'month', col: 'half' },
+      { id: 'ld-end',      label: 'Date Completed', type: 'month', col: 'half' },
+      { id: 'ld-projurl',  label: 'URL (optional)', type: 'url', placeholder: 'https://', col: 'full' }
+    ]
+  },
+  other: {
+    narrativeLabel: 'Tell us about it <span class="si-required">*</span>',
+    narrativePlaceholder: 'Tell us what happened, what you did, what you learned. There\'s no wrong answer — just write freely...',
+    narrativeHint: 'Any experience worth capturing belongs here.',
+    fields: []
+  }
+};
+
+function ldSelectType(type) {
+  ldCurrentType = type;
+  document.querySelectorAll('.ld-type-item').forEach(function(el) {
+    var radio = el.querySelector('input[type="radio"]');
+    var isMatch = radio && radio.value === type;
+    el.classList.toggle('selected', isMatch);
+    if (isMatch) radio.checked = true;
+  });
+  ldRenderFields(type);
+}
+
+function ldRenderFields(type) {
+  var config = ldTypeConfig[type] || ldTypeConfig['other'];
+  var container = document.getElementById('ld-dynamic-fields');
+  if (!container) return;
+
+  if (!config.fields.length) {
+    container.innerHTML = '';
+  } else {
+    var html = '<div class="ld-dyn-grid">';
+    config.fields.forEach(function(f) {
+      var colClass = f.col === 'full' ? 'ld-dyn-field full' : 'ld-dyn-field';
+      html += '<div class="' + colClass + '">';
+      html += '<label class="ld-dyn-label">' + f.label + '</label>';
+      if (f.type === 'select') {
+        html += '<select id="' + f.id + '" class="ld-dyn-select">';
+        f.options.forEach(function(o) {
+          html += '<option value="' + o[0] + '">' + o[1] + '</option>';
+        });
+        html += '</select>';
+      } else {
+        var attrs = ' type="' + f.type + '" id="' + f.id + '" class="ld-dyn-input"';
+        if (f.placeholder) attrs += ' placeholder="' + f.placeholder.replace(/"/g, '&quot;') + '"';
+        html += '<input' + attrs + '>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  // Update narrative section copy
+  var labelEl = document.getElementById('ld-narrative-label');
+  var ta      = document.getElementById('ld-narrative');
+  var hint    = document.getElementById('ld-narrative-hint');
+  if (labelEl) labelEl.innerHTML = config.narrativeLabel;
+  if (ta)      ta.placeholder    = config.narrativePlaceholder;
+  if (hint)    hint.textContent  = config.narrativeHint;
+}
+
+// ── Guided Entry submission ───────────────────────────────────────────────────
+function startGuidedIngestion() {
+  var type      = ldCurrentType;
+  var narrative = (document.getElementById('ld-narrative').value || '').trim();
+
+  function val(id) {
+    var el = document.getElementById(id);
+    return el ? (el.value || '').trim() : '';
+  }
+
+  // Build base payload
+  var payload = {
+    storyCategory:  type,
+    narrative:      narrative,
+    themes:         val('ld-guided-themes'),
+    startDate:      val('ld-start'),
+    endDate:        val('ld-end')
+  };
+
+  if (type === 'work') {
+    if (!narrative) { alert('Please describe your role and accomplishments.'); return; }
+    payload.employer       = val('ld-employer');
+    payload.jobTitles      = val('ld-titles');
+    payload.location       = val('ld-location');
+    payload.employmentType = val('ld-emptype');
+
+  } else if (type === 'education') {
+    if (!narrative) { alert('Please describe your education experience.'); return; }
+    payload.employer  = val('ld-school');
+    payload.jobTitles = [val('ld-degree'), val('ld-field')].filter(Boolean).join(', ');
+    payload.location  = val('ld-location');
+
+  } else if (type === 'volunteer') {
+    if (!narrative) { alert('Please describe your volunteer work.'); return; }
+    payload.employer  = val('ld-org');
+    payload.jobTitles = val('ld-role');
+    payload.location  = val('ld-location');
+
+  } else if (type === 'certification') {
+    payload.employer  = val('ld-issuer');
+    payload.jobTitles = val('ld-credential');
+    payload.startDate = val('ld-dateearned');
+    payload.endDate   = '';
+    if (!payload.jobTitles && !narrative) { alert('Please enter a credential name.'); return; }
+
+  } else if (type === 'gap') {
+    var gapLabel  = val('ld-gap-label');
+    var gapReason = val('ld-gap-reason');
+    if (!gapLabel && !gapReason) { alert('Please select a reason or enter a short label for this gap period.'); return; }
+    payload.employer  = gapLabel || gapReason;
+    payload.jobTitles = 'Gap Period';
+    if (!narrative) payload.narrative = gapLabel || gapReason;
+
+  } else if (type === 'project') {
+    if (!narrative) { alert('Please describe the project.'); return; }
+    payload.employer  = val('ld-projname');
+    payload.jobTitles = val('ld-projrole');
+    var projUrl = val('ld-projurl');
+    if (projUrl) payload.narrative = payload.narrative + '\nProject URL: ' + projUrl;
+
+  } else if (type === 'other') {
+    if (!narrative) { alert('Please tell us something.'); return; }
+  }
+
+  document.getElementById('ld-guided-btn').disabled = true;
+  submitStory(payload, 'ld-guided-btn');
+}
+
+// ── Open Entry submission ─────────────────────────────────────────────────────
+function startOpenIngestion() {
+  var narrative = (document.getElementById('ld-open-narrative').value || '').trim();
+  if (!narrative) { alert('Please tell us something about your life or work.'); return; }
+
+  var payload = {
+    storyCategory: 'open',
+    narrative:     narrative,
+    themes:        (document.getElementById('ld-open-themes').value || '').trim()
+  };
+
+  document.getElementById('ld-open-btn').disabled = true;
+  submitStory(payload, 'ld-open-btn');
+}
+
+// ── Shared submission handler ─────────────────────────────────────────────────
+function submitStory(payload, submitBtnId) {
   document.getElementById('si-form-area').style.display = 'none';
   document.getElementById('si-pipeline').style.display  = 'block';
   document.getElementById('si-results').style.display   = 'none';
   document.getElementById('si-error').style.display     = 'none';
 
-  // Animate stages
   siSetStage(1, 'active');
   var delays = [0, 900, 1800, 2700, 3600];
   [1,2,3,4,5].forEach(function(n) {
@@ -1590,17 +1945,6 @@ function startStoryIngestion() {
       siSetStage(n, 'active');
     }, delays[n-1]);
   });
-
-  var payload = {
-    narrative:      narrative,
-    employer:       (document.getElementById('si-employer').value  || '').trim(),
-    location:       (document.getElementById('si-location').value  || '').trim(),
-    startDate:      (document.getElementById('si-start').value     || '').trim(),
-    endDate:        (document.getElementById('si-end').value       || '').trim(),
-    jobTitles:      (document.getElementById('si-titles').value    || '').trim(),
-    employmentType: (document.getElementById('si-emptype').value   || '').trim(),
-    themes:         (document.getElementById('si-themes').value    || '').trim()
-  };
 
   fetch('/api/ingest-story', {
     method: 'POST',
@@ -1614,10 +1958,11 @@ function startStoryIngestion() {
   })
   .catch(function(err) {
     document.getElementById('si-pipeline').style.display = 'none';
-    document.getElementById('si-error').style.display = 'block';
-    document.getElementById('si-error').textContent = 'Error: ' + err.message;
-    document.getElementById('si-btn').disabled = false;
+    document.getElementById('si-error').style.display    = 'block';
+    document.getElementById('si-error').textContent      = 'Error: ' + err.message;
     document.getElementById('si-form-area').style.display = 'block';
+    var btn = document.getElementById(submitBtnId);
+    if (btn) btn.disabled = false;
   });
 }
 
@@ -1636,423 +1981,4 @@ function showIngestionResults(data) {
 
   var title = data.storyTitle || 'Story';
   document.getElementById('si-banner').textContent =
-    'Complete -- ' + title + ' -- ' + data.bulletsCount + ' bullets written to Notion';
-
-  var typeMap = { achievement: 'Achievement', job_story: 'Job Story', professional_summary: 'Professional Summary' };
-  document.getElementById('si-r-type').textContent     = typeMap[data.storyType] || data.storyType || '--';
-  document.getElementById('si-r-seniority').textContent = data.seniority || '--';
-  document.getElementById('si-r-families').textContent  = (data.jobFamilies || []).join(', ') || '--';
-  document.getElementById('si-r-bullets').textContent   = data.bulletsCount || 0;
-
-  // Scores
-  var scores = data.scores || {};
-  var scoreKeys = ['clarity', 'impact', 'measurability', 'seniority', 'strength'];
-  var scoreLabels = { clarity: 'Clarity', impact: 'Impact', measurability: 'Measurability', seniority: 'Seniority', strength: 'Strength' };
-  var scoresHtml = scoreKeys
-    .filter(function(k) { return scores[k] != null; })
-    .map(function(k) {
-      return '<span class="si-score-chip">' + scoreLabels[k] + ': <span>' + scores[k] + '</span></span>';
-    }).join('');
-  document.getElementById('si-scores-row').innerHTML = scoresHtml;
-
-  // Short version
-  document.getElementById('si-r-short').textContent = (data.versions && data.versions.short) || '--';
-
-  // Keywords
-  var kwHtml = (data.keywords || []).map(function(k) {
-    return '<span class="si-kw-chip">' + k + '</span>';
-  }).join('');
-  document.getElementById('si-r-keywords').innerHTML = kwHtml || '--';
-
-  // Bullets
-  var bullets = data.bullets || [];
-  var bulletHtml = bullets.map(function(b, i) {
-    return '<div class="si-bullet-row">'
-      + '<div class="si-bullet-rank">' + (b.rankScore || '--') + '</div>'
-      + '<div style="flex:1">' + (b.text || '') + '</div>'
-      + '<div class="si-bullet-type-tag">' + (b.bulletType || '') + '</div>'
-      + '</div>';
-  }).join('');
-  document.getElementById('si-r-bullet-list').innerHTML = bulletHtml || '<div style="color:var(--text-secondary);font-size:13px">No bullets generated</div>';
-
-  // Notion link
-  if (data.notionStoryUrl) {
-    document.getElementById('si-notion-link').href = data.notionStoryUrl;
-    document.getElementById('si-notion-link').style.display = 'inline-block';
-  } else {
-    document.getElementById('si-notion-link').style.display = 'none';
-  }
-}
-
-function resetStoryIngestion() {
-  document.getElementById('si-form-area').style.display = 'block';
-  document.getElementById('si-pipeline').style.display  = 'none';
-  document.getElementById('si-results').style.display   = 'none';
-  document.getElementById('si-error').style.display     = 'none';
-  document.getElementById('si-btn').disabled = false;
-  document.getElementById('si-narrative').value = '';
-  document.getElementById('si-employer').value  = '';
-  document.getElementById('si-location').value  = '';
-  document.getElementById('si-start').value     = '';
-  document.getElementById('si-end').value       = '';
-  document.getElementById('si-titles').value    = '';
-  document.getElementById('si-emptype').value   = '';
-  document.getElementById('si-themes').value    = '';
-  [1,2,3,4,5].forEach(function(n) { siSetStage(n, ''); });
-}
-</script>
-
-<script>
-function switchTab(id) {
-  document.querySelectorAll('.cip-tab-btn').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.tab === id);
-  });
-  document.querySelectorAll('.cip-tab-panel').forEach(function(p) {
-    p.classList.toggle('active', p.id === 'tab-' + id);
-  });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-</script>
-
-
-<script>
-var raAssembled     = null;
-var raJobTitle      = '';
-var raCompany       = '';
-var raSelectedJobId = null;
-var raEmployers     = []; // [{employer, headerText, excluded}] in display order
-
-function raSetStage(n, state) {
-  var el = document.getElementById('ra-s' + n);
-  var ic = document.getElementById('ra-i' + n);
-  if (!el || !ic) return;
-  el.className = 'ra-stage' + (state ? ' ' + state : '');
-  ic.innerHTML = state === 'done' ? '&#10003;' : state === 'active' ? '&#9679;' : '&#9675;';
-}
-
-async function searchJobs() {
-  var company = (document.getElementById('ra-company').value || '').trim();
-  if (!company) { alert('Enter a job title keyword.'); return; }
-  var btn = document.getElementById('ra-search-btn');
-  btn.disabled = true;
-  btn.textContent = 'Searching…';
-  document.getElementById('ra-job-picker').style.display = 'none';
-  document.getElementById('ra-error').style.display = 'none';
-
-  try {
-    var resp = await fetch('/api/search-jobs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobTitle: company })
-    });
-    var data = await resp.json();
-    if (!resp.ok || data.error) throw new Error(data.error || 'Search failed');
-    if (!data.jobs || data.jobs.length === 0) throw new Error('No matching jobs found for "' + company + '". Try a different keyword or run the Job Posting Analyzer first.');
-
-    raSelectedJobId = null;
-    document.getElementById('ra-assemble-btn').disabled = true;
-    var list = document.getElementById('ra-job-list');
-    list.innerHTML = '';
-    data.jobs.forEach(function(job) {
-      var item = document.createElement('div');
-      item.className = 'ra-job-item';
-      item.dataset.id      = job.id;
-      item.dataset.title   = job.jobTitle;
-      item.dataset.company = job.company;
-      var scoreLabel = job.score != null ? job.score + ' pts' : '';
-      var tierLabel  = job.tier  || '';
-      var metaParts  = [job.dateEval, tierLabel, scoreLabel].filter(Boolean);
-      item.innerHTML =
-        '<input type="radio" class="ra-job-item-radio" name="ra-job-radio" />' +
-        '<div class="ra-job-item-body">' +
-          '<div class="ra-job-item-title">' + (job.jobTitle || '(Untitled)') + '</div>' +
-          '<div class="ra-job-item-meta">' +
-            (job.company ? '<strong>' + job.company + '</strong>' : '') +
-            (job.company && metaParts.length ? ' &nbsp;&middot;&nbsp; ' : '') +
-            metaParts.join(' &nbsp;&middot;&nbsp; ') +
-          '</div>' +
-        '</div>' +
-        (job.score != null ? '<div class="ra-job-item-score">' + job.score + '</div>' : '');
-      item.addEventListener('click', function() {
-        document.querySelectorAll('.ra-job-item').forEach(function(el){ el.classList.remove('selected'); el.querySelector('input').checked = false; });
-        item.classList.add('selected');
-        item.querySelector('input').checked = true;
-        raSelectedJobId = job.id;
-        raCompany  = job.company || company;
-        raJobTitle = job.jobTitle || company;
-        loadEmployerPicker();
-      });
-      list.appendChild(item);
-    });
-    document.getElementById('ra-job-picker').style.display = 'block';
-  } catch (err) {
-    document.getElementById('ra-error').style.display = 'block';
-    document.getElementById('ra-error').textContent   = 'Error: ' + err.message;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Search →';
-  }
-}
-
-async function loadEmployerPicker() {
-  var step = document.getElementById('ra-emp-step');
-  var list = document.getElementById('ra-emp-list');
-  step.style.display = 'block';
-  list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Loading employers…</div>';
-  document.getElementById('ra-assemble-btn').disabled = true;
-
-  try {
-    var resp = await fetch('/api/mrl-employers');
-    var data = await resp.json();
-    if (!resp.ok || data.error) throw new Error(data.error || 'Could not load employers');
-
-    raEmployers = (data.employers || []).map(function(e) {
-      return { employer: e.employer, headerText: e.headerText, excluded: false };
-    });
-    renderEmpList();
-    document.getElementById('ra-assemble-btn').disabled = raEmployers.length === 0;
-  } catch (err) {
-    list.innerHTML = '<div style="font-size:12px;color:var(--error);padding:8px 0">Could not load employers: ' + err.message + '</div>';
-    // Still allow assembly — server will use fallback ordering
-    document.getElementById('ra-assemble-btn').disabled = false;
-  }
-}
-
-function renderEmpList() {
-  var list = document.getElementById('ra-emp-list');
-  list.innerHTML = '';
-  var pos = 0;
-  raEmployers.forEach(function(emp, idx) {
-    if (!emp.excluded) pos++;
-    var row = document.createElement('div');
-    row.className = 'ra-emp-row' + (emp.excluded ? ' excluded' : '');
-
-    var numBadge = '<div class="ra-emp-num">' + (emp.excluded ? '–' : pos) + '</div>';
-    var name     = '<div class="ra-emp-name">' + emp.employer + '</div>';
-
-    var upBtn  = '<button class="ra-emp-arrow" ' + (idx === 0 ? 'disabled' : '') + ' onclick="empMove(' + idx + ',-1)">&#9650;</button>';
-    var dnBtn  = '<button class="ra-emp-arrow" ' + (idx === raEmployers.length - 1 ? 'disabled' : '') + ' onclick="empMove(' + idx + ',1)">&#9660;</button>';
-    var arrows = '<div class="ra-emp-arrows">' + upBtn + dnBtn + '</div>';
-
-    var tog = '<button class="ra-emp-toggle" onclick="empToggle(' + idx + ')">' + (emp.excluded ? 'Include' : 'Exclude') + '</button>';
-
-    row.innerHTML = numBadge + name + arrows + tog;
-    list.appendChild(row);
-  });
-}
-
-function empMove(idx, dir) {
-  var swap = idx + dir;
-  if (swap < 0 || swap >= raEmployers.length) return;
-  var tmp = raEmployers[idx];
-  raEmployers[idx] = raEmployers[swap];
-  raEmployers[swap] = tmp;
-  renderEmpList();
-}
-
-function empToggle(idx) {
-  raEmployers[idx].excluded = !raEmployers[idx].excluded;
-  renderEmpList();
-}
-
-async function startAssembly() {
-  if (!raSelectedJobId) { alert('Select a job posting first.'); return; }
-  var override = document.getElementById('ra-type-override').value;
-
-  raAssembled = null;
-  document.getElementById('ra-form-area').style.display = 'none';
-  document.getElementById('ra-preview').style.display   = 'none';
-  document.getElementById('ra-error').style.display     = 'none';
-  document.getElementById('ra-pipeline').style.display  = 'block';
-  [1,2,3,4,5].forEach(function(i){ raSetStage(i, ''); });
-
-  var delays = [0, 600, 1200, 1900, 2800];
-  delays.forEach(function(d, idx){ setTimeout(function(){ raSetStage(idx+1,'active'); }, d); });
-
-  try {
-    var resp = await fetch('/api/assemble-resume', {
-      
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        notionJobId: raSelectedJobId,
-        companyName: raCompany,
-        resumeTypeOverride: override,
-        employerOrder: raEmployers.filter(function(e){ return !e.excluded; }).map(function(e){ return e.employer; })
-      })
-    });
-    var data = await resp.json();
-    if (!resp.ok || data.error) throw new Error(data.error || 'Assembly failed');
-
-    [1,2,3,4,5].forEach(function(i){ raSetStage(i,'done'); });
-    await new Promise(function(r){ setTimeout(r, 400); });
-
-    raJobTitle  = data.jobTitle || raJobTitle;
-    raAssembled = data.assembled;
-    showAssemblyPreview(data);
-  } catch (err) {
-    [1,2,3,4,5].forEach(function(i){ raSetStage(i,''); });
-    document.getElementById('ra-pipeline').style.display  = 'none';
-    document.getElementById('ra-error').style.display     = 'block';
-    document.getElementById('ra-error').textContent       = 'Error: ' + err.message;
-    document.getElementById('ra-form-area').style.display = 'block';
-  }
-}
-
-function showAssemblyPreview(data) {
-  var a = data.assembled;
-  document.getElementById('ra-pipeline').style.display = 'none';
-  document.getElementById('ra-preview').style.display  = 'block';
-
-  document.getElementById('ra-type-chip').textContent = a.resumeType || '';
-  var tierEl = document.getElementById('ra-tier-chip');
-  tierEl.textContent = data.finalTier ? data.finalTier + (data.m7Score ? '  ·  ' + data.m7Score + ' pts' : '') : '';
-  tierEl.style.display = data.finalTier ? '' : 'none';
-  document.getElementById('ra-rationale').textContent = a.resumeTypeRationale || '';
-
-  document.getElementById('ra-headline').textContent = a.headline || '';
-  document.getElementById('ra-subhead').textContent  = a.subHeadline || '';
-
-  var tagWrap = document.getElementById('ra-kw-tags');
-  tagWrap.innerHTML = '';
-  (a.keywordsInjected || []).slice(0, 8).forEach(function(kw) {
-    var chip = document.createElement('span');
-    chip.className = 'ra-kw-chip';
-    chip.textContent = kw;
-    tagWrap.appendChild(chip);
-  });
-
-  document.getElementById('ra-summary').textContent = a.summary || '';
-
-  var skillsWrap = document.getElementById('ra-skills');
-  skillsWrap.innerHTML = '';
-  (a.skills || []).forEach(function(s) {
-    var chip = document.createElement('span');
-    chip.className = 'ra-kw-chip';
-    chip.textContent = s;
-    skillsWrap.appendChild(chip);
-  });
-
-  var compWrap = document.getElementById('ra-competencies');
-  compWrap.innerHTML = '';
-  var comp = a.competencies || {};
-  Object.keys(comp).forEach(function(rowKey) {
-    var row = document.createElement('div');
-    row.className = 'ra-kw-row';
-    row.style.marginBottom = '5px';
-    (comp[rowKey] || []).forEach(function(c) {
-      if (!c) return;
-      var chip = document.createElement('span');
-      chip.className = 'ra-kw-chip';
-      chip.textContent = c;
-      row.appendChild(chip);
-    });
-    compWrap.appendChild(row);
-  });
-
-  var bulletList = document.getElementById('ra-bullets');
-  bulletList.innerHTML = '';
-  var bizHdrs = a.businessHeaders || {};
-  var grouped = {};
-  var empOrder = [];
-  (a.selectedBullets || []).forEach(function(b) {
-    var emp = b.employer || 'Other';
-    if (!grouped[emp]) { grouped[emp] = []; empOrder.push(emp); }
-    grouped[emp].push(b.text || '');
-  });
-  empOrder.forEach(function(emp) {
-    var hdrText = bizHdrs[emp] || emp;
-    var hdr = document.createElement('li');
-    hdr.className = 'ra-employer-header';
-    hdr.textContent = hdrText;
-    bulletList.appendChild(hdr);
-    grouped[emp].forEach(function(txt) {
-      var li = document.createElement('li');
-      li.className = 'ra-bullet-item';
-      var dot = document.createElement('span');
-      dot.className = 'ra-bullet-dot';
-      dot.textContent = '•';
-      var span = document.createElement('span');
-      span.textContent = txt;
-      li.appendChild(dot);
-      li.appendChild(span);
-      bulletList.appendChild(li);
-    });
-  });
-
-  document.getElementById('ra-tools').textContent = a.toolsStack || '';
-  document.getElementById('ra-pd').textContent    = a.professionalDevelopment || '';
-
-  var notes = a.tailoringNotes || '';
-  document.getElementById('ra-notes').textContent = notes;
-  document.getElementById('ra-notes-details').style.display = notes ? '' : 'none';
-
-  document.getElementById('ra-cowork-btn').style.display = '';
-}
-
-function resetAssembly() {
-  raAssembled     = null;
-  raSelectedJobId = null;
-  raEmployers     = [];
-  raCompany       = '';
-  raJobTitle      = '';
-
-  document.getElementById('ra-form-area').style.display  = 'block';
-  document.getElementById('ra-preview').style.display    = 'none';
-  document.getElementById('ra-pipeline').style.display   = 'none';
-  document.getElementById('ra-error').style.display      = 'none';
-  document.getElementById('ra-job-picker').style.display = 'none';
-  document.getElementById('ra-emp-step').style.display   = 'none';
-  document.getElementById('ra-emp-list').innerHTML       = '';
-  document.getElementById('ra-job-list').innerHTML       = '';
-  document.getElementById('ra-company').value            = '';
-  document.getElementById('ra-assemble-btn').disabled    = true;
-}
-
-function copyCoworkPrompt() {
-  if (!raAssembled) return;
-  var a = raAssembled;
-  var bizHdrs = a.businessHeaders || {};
-  var grouped = {};
-  var empOrder = [];
-  (a.selectedBullets || []).forEach(function(b) {
-    var emp = b.employer || 'Other';
-    if (!grouped[emp]) { grouped[emp] = []; empOrder.push(emp); }
-    grouped[emp].push(b.text || '');
-  });
-
-  var expLines = [];
-  empOrder.forEach(function(emp) {
-    expLines.push('\n' + (bizHdrs[emp] || emp));
-    grouped[emp].forEach(function(txt) { expLines.push('  • ' + txt); });
-  });
-
-  var prompt =
-    'Please build a polished .docx resume from the assembled content below. ' +
-    'Follow SOP v3.6: bullets are verbatim, tailor only the top half for ATS. ' +
-    'Resume Type: ' + (a.resumeType || '') + '\n\n' +
-    '== HEADLINE ==\n' + (a.headline || '') + '\n\n' +
-    '== SUB-HEADLINE ==\n' + (a.subHeadline || '') + '\n\n' +
-    '== SUMMARY ==\n' + (a.summary || '') + '\n\n' +
-    '== SKILLS ==\n' + (a.skills || []).join(' | ') + '\n\n' +
-    '== CORE COMPETENCIES ==\n' + (function(){
-      var c = a.competencies || {};
-      return Object.keys(c).map(function(r){ return (c[r]||[]).filter(Boolean).join('  |  '); }).join('\n');
-    })() + '\n\n' +
-    '== EXPERIENCE ==' + expLines.join('\n') + '\n\n' +
-    '== TOOLS & AI STACK ==\n' + (a.toolsStack || '') + '\n\n' +
-    '== PROFESSIONAL DEVELOPMENT ==\n' + (a.professionalDevelopment || '') + '\n\n' +
-    '== ASSEMBLY NOTES ==\n' + (a.tailoringNotes || '');
-
-  navigator.clipboard.writeText(prompt).then(function() {
-    var btn = document.getElementById('ra-cowork-btn');
-    var orig = btn.innerHTML;
-    btn.innerHTML = '&#10003; Copied to clipboard!';
-    btn.style.color = 'var(--gold)';
-    setTimeout(function(){ btn.innerHTML = orig; btn.style.color = ''; }, 2500);
-  }).catch(function() { alert('Copy failed — please copy manually.'); });
-}
-
-</script>
-</body>
-</html>
+    'Complete -- ' + title + ' -- ' + data.
