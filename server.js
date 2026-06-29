@@ -117,7 +117,8 @@ async function notionRequest(method, endpoint, body, token) {
 // --- Company helpers ----------------------------------------------------------
 
 async function findCompany(companyName, token) {
-  var result = await notionRequest('POST', '/databases/' + COMPANIES_DB + '/query', {
+  // Must use notionQueryRequest (v2022-06-28) — v2025-09-03 returns invalid_request_url on /query
+  var result = await notionQueryRequest(COMPANIES_DB, {
     filter: {
       property: 'Company',
       title: { contains: String(companyName).slice(0, 50) }
